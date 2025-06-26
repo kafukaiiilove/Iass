@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.CustomerPackageRecordMapper">
+
+    <resultMap id="BaseResultMap" type="com.example.entity.CustomerPackageRecord">
+        <id column="id" property="id"/>
+        <result column="record_date" property="recordDate"/>
+        <result column="package_url" property="packageUrl"/>
+        <result column="fix_content" property="fixContent"/>
+        <result column="image_id" property="imageId"/>
+        <result column="developer" property="developer"/>
+        <result column="commit_id" property="commitId"/>
+        <result column="tester" property="tester"/>
+        <result column="test_result" property="testResult"/>
+        <result column="remarks" property="remarks"/>
+        <result column="android_version" property="androidVersion"/>
+        <result column="category" property="category"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, record_date, package_url, fix_content, image_id, developer, commit_id, tester, test_result, remarks, android_version, category, create_time, update_time
+    </sql>
+
+    <select id="selectAll" parameterType="com.example.entity.CustomerPackageRecord" resultMap="BaseResultMap">
+        select 
+        <include refid="Base_Column_List" />
+        from customer_package_record
+        <where>
+            <if test="androidVersion != null and androidVersion != ''">
+                AND android_version = #{androidVersion}
+            </if>
+            <if test="category != null and category != ''">
+                AND category = #{category}
+            </if>
+            <if test="fixContent != null and fixContent != ''">
+                AND fix_content LIKE CONCAT('%', #{fixContent}, '%')
+            </if>
+            <if test="developer != null and developer != ''">
+                AND developer LIKE CONCAT('%', #{developer}, '%')
+            </if>
+            <if test="tester != null and tester != ''">
+                AND tester LIKE CONCAT('%', #{tester}, '%')
+            </if>
+            <if test="testResult != null and testResult != ''">
+                AND test_result = #{testResult}
+            </if>
+            <if test="imageId != null and imageId != ''">
+                AND image_id LIKE CONCAT('%', #{imageId}, '%')
+            </if>
+            <if test="commitId != null and commitId != ''">
+                AND commit_id LIKE CONCAT('%', #{commitId}, '%')
+            </if>
+            <if test="remarks != null and remarks != ''">
+                AND remarks LIKE CONCAT('%', #{remarks}, '%')
+            </if>
+        </where>
+        order by record_date desc, id desc
+    </select>
+
+    <select id="selectPage" resultMap="BaseResultMap">
+        select 
+        <include refid="Base_Column_List" />
+        from customer_package_record
+        <where>
+            <if test="record.androidVersion != null and record.androidVersion != ''">
+                AND android_version = #{record.androidVersion}
+            </if>
+            <if test="record.category != null and record.category != ''">
+                AND category = #{record.category}
+            </if>
+            <if test="record.fixContent != null and record.fixContent != ''">
+                AND fix_content LIKE CONCAT('%', #{record.fixContent}, '%')
+            </if>
+            <if test="record.developer != null and record.developer != ''">
+                AND developer LIKE CONCAT('%', #{record.developer}, '%')
+            </if>
+            <if test="record.tester != null and record.tester != ''">
+                AND tester LIKE CONCAT('%', #{record.tester}, '%')
+            </if>
+            <if test="record.testResult != null and record.testResult != ''">
+                AND test_result = #{record.testResult}
+            </if>
+            <if test="record.imageId != null and record.imageId != ''">
+                AND image_id LIKE CONCAT('%', #{record.imageId}, '%')
+            </if>
+            <if test="record.commitId != null and record.commitId != ''">
+                AND commit_id LIKE CONCAT('%', #{record.commitId}, '%')
+            </if>
+            <if test="record.remarks != null and record.remarks != ''">
+                AND remarks LIKE CONCAT('%', #{record.remarks}, '%')
+            </if>
+            <if test="startDate != null and startDate != ''">
+                AND DATE(record_date) &gt;= #{startDate}
+            </if>
+            <if test="endDate != null and endDate != ''">
+                AND DATE(record_date) &lt;= #{endDate}
+            </if>
+        </where>
+        order by record_date desc, id desc
+    </select>
+
+    <select id="selectCount" resultType="int">
+        SELECT count(0) FROM customer_package_record
+        <where>
+            <if test="record.androidVersion != null and record.androidVersion != ''">
+                AND android_version = #{record.androidVersion}
+            </if>
+            <if test="record.category != null and record.category != ''">
+                AND category = #{record.category}
+            </if>
+            <if test="record.fixContent != null and record.fixContent != ''">
+                AND fix_content LIKE CONCAT('%', #{record.fixContent}, '%')
+            </if>
+            <if test="record.developer != null and record.developer != ''">
+                AND developer LIKE CONCAT('%', #{record.developer}, '%')
+            </if>
+            <if test="record.tester != null and record.tester != ''">
+                AND tester LIKE CONCAT('%', #{record.tester}, '%')
+            </if>
+            <if test="record.testResult != null and record.testResult != ''">
+                AND test_result = #{record.testResult}
+            </if>
+            <if test="record.imageId != null and record.imageId != ''">
+                AND image_id LIKE CONCAT('%', #{record.imageId}, '%')
+            </if>
+            <if test="record.commitId != null and record.commitId != ''">
+                AND commit_id LIKE CONCAT('%', #{record.commitId}, '%')
+            </if>
+            <if test="record.remarks != null and record.remarks != ''">
+                AND remarks LIKE CONCAT('%', #{record.remarks}, '%')
+            </if>
+            <if test="startDate != null and startDate != ''">
+                AND DATE(record_date) &gt;= #{startDate}
+            </if>
+            <if test="endDate != null and endDate != ''">
+                AND DATE(record_date) &lt;= #{endDate}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectById" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        select 
+        <include refid="Base_Column_List" />
+        from customer_package_record
+        where id = #{id}
+    </select>
+
+    <delete id="deleteById" parameterType="java.lang.Integer">
+        delete from customer_package_record
+        where id = #{id}
+    </delete>
+
+    <delete id="deleteBatch">
+        delete from customer_package_record where id in
+        <foreach collection="list" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <insert id="insert" parameterType="com.example.entity.CustomerPackageRecord" useGeneratedKeys="true" keyProperty="id">
+        insert into customer_package_record(record_date, package_url, fix_content, image_id, developer, commit_id, tester, test_result, remarks, android_version, category)
+        values
+        (#{recordDate}, #{packageUrl}, #{fixContent}, #{imageId}, #{developer}, #{commitId}, #{tester}, #{testResult}, #{remarks}, #{androidVersion}, #{category})
+    </insert>
+
+    <update id="updateById" parameterType="com.example.entity.CustomerPackageRecord">
+        update customer_package_record
+        <set>
+            <if test="recordDate != null">record_date = #{recordDate},</if>
+            <if test="packageUrl != null">package_url = #{packageUrl},</if>
+            <if test="fixContent != null">fix_content = #{fixContent},</if>
+            <if test="imageId != null">image_id = #{imageId},</if>
+            <if test="developer != null">developer = #{developer},</if>
+            <if test="commitId != null">commit_id = #{commitId},</if>
+            <if test="tester != null">tester = #{tester},</if>
+            <if test="testResult != null">test_result = #{testResult},</if>
+            <if test="remarks != null">remarks = #{remarks},</if>
+            <if test="androidVersion != null and androidVersion != ''">android_version = #{androidVersion},</if>
+            <if test="category != null and category != ''">category = #{category},</if>
+        </set>
+        where id = #{id}
+    </update>
+
+</mapper> 

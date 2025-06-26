@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.A13Mapper">
+
+    <resultMap id="A13" type="com.example.entity.A13">
+        <id column="id" property="id"/>
+        <result column="title" property="title"/>
+        <result column="content" property="content"/>
+        <result column="parameter" property="parameter"/>
+        <result column="description" property="description"/>
+        <result column="time" property="time"/>
+        <result column="user" property="user"/>
+    </resultMap>
+
+    <select id="selectAll" parameterType="com.example.entity.A13" resultMap="A13">
+        SELECT * FROM A13
+        <where>
+            <if test="title != null and title != ''">
+                AND title LIKE CONCAT('%', #{title}, '%')
+            </if>
+            <if test="content != null and content != ''">
+                AND content LIKE CONCAT('%', #{content}, '%')
+            </if>
+            <if test="parameter != null and parameter != ''">
+                AND parameter LIKE CONCAT('%', #{parameter}, '%')
+            </if>
+            <if test="description != null and description != ''">
+                AND description LIKE CONCAT('%', #{description}, '%')
+            </if>
+            <if test="user != null and user != ''">
+                AND user LIKE CONCAT('%', #{user}, '%')
+            </if>
+        </where>
+        ORDER BY id ASC
+    </select>
+
+    <select id="selectById" parameterType="java.lang.Integer" resultMap="A13">
+        SELECT * FROM A13 WHERE id = #{id}
+    </select>
+    
+     <select id="getMaxId" resultType="java.lang.Integer">
+        SELECT MAX(id) FROM A13
+    </select>
+
+    <update id="updateAutoIncrement">
+        ALTER TABLE A13 AUTO_INCREMENT = #{value}
+    </update>
+
+    <delete id="deleteById" parameterType="java.lang.Integer">
+        DELETE FROM A13 WHERE id = #{id}
+    </delete>
+
+    <delete id="deleteBatch">
+        delete from A13 where id in
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <insert id="insert" parameterType="com.example.entity.A13">
+        INSERT INTO A13 (id, title, parameter, description, content, time, user)
+        VALUES (#{id}, #{title}, #{parameter}, #{description}, #{content}, #{time}, #{user})
+    </insert>
+
+    <update id="updateById" parameterType="com.example.entity.A13">
+        UPDATE A13
+        <set>
+            <if test="title != null and title != ''">
+                title = #{title},
+            </if>
+            <if test="content != null and content != ''">
+                content = #{content},
+            </if>
+            <if test="time != null">
+                time = #{time},
+            </if>
+            <if test="user != null and user != ''">
+                user = #{user},
+            </if>
+            <if test="parameter != null and parameter != ''">
+                parameter = #{parameter},
+            </if>
+            <if test="description != null and description != ''">
+                description = #{description},
+            </if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+</mapper>

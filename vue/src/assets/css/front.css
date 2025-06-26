@@ -1,0 +1,130 @@
+.front-container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background-color: #fff;
+    color: #333;
+    transition: all 0.3s;
+}
+
+.front-container.dark-mode {
+    background-color: #1a1a1a;
+    color: #fff;
+}
+
+.front-header {
+    height: 60px;
+    line-height: 60px;
+    background-color: #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, .12);
+    display: flex;
+    padding: 0 20px;
+    transition: all 0.3s;
+}
+
+.dark-mode .front-header {
+    background-color: #2a2a2a;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, .3);
+}
+
+.front-header-left {
+    display: flex;
+    align-items: center;
+}
+
+.front-header-left img {
+    height: 40px;
+    margin-right: 10px;
+}
+
+.front-header-right {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+}
+
+.front-main {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+}
+
+.front-main-left {
+    width: 200px;
+    background-color: #fff;
+    box-shadow: 2px 0 4px rgba(0, 0, 0, .12);
+    transition: all 0.3s;
+}
+
+.dark-mode .front-main-left {
+    background-color: #2a2a2a;
+    box-shadow: 2px 0 4px rgba(0, 0, 0, .3);
+}
+
+.front-main-right {
+    flex: 1;
+    padding: 20px;
+    overflow: auto;
+    background-color: #f5f7fa;
+    transition: all 0.3s;
+}
+
+.dark-mode .front-main-right {
+    background-color: #1a1a1a;
+}
+
+/* 暗黑模式下的菜单样式 */
+.dark-mode .el-menu {
+    background-color: #2a2a2a;
+    border-right: none;
+}
+
+.dark-mode .el-menu-item {
+    color: #fff;
+}
+
+.dark-mode .el-menu-item:hover {
+    background-color: #3a3a3a;
+}
+
+.dark-mode .el-menu-item.is-active {
+    background-color: #409EFF;
+    color: #fff;
+}
+
+.front-notice {
+    padding: 5px 20px;
+    color: #666;
+    font-size: 12px
+}
+.front-header-left .title {
+    flex: 1;
+    color: #355476;
+    cursor: pointer;
+    margin-left: 10px;
+    font-size: 20px;
+    font-weight: bold;
+}
+.front-header-center {
+    flex: 1;
+}
+.front-header-dropdown {
+    display: flex;
+    align-items: center;
+    justify-content: right;
+}
+.el-dropdown-menu {
+    width: 100px !important;
+    text-align: center !important;
+}
+
+/*页面具体样式自定义*/
+.main-content {
+    width: 100%;
+    margin: 5px auto;
+}
+/* ElementUI 样式覆盖 */
+.el-menu.el-menu--horizontal {
+    border: none !important;
+    height: 59px;
+}
