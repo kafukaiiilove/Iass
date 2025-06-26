@@ -92,7 +92,7 @@ mvn spring-boot:run
 # 或者使用 IDE 直接运行 SpringbootApplication.java
 ```
 
-后端服务默认运行在 `http://localhost:8080`
+后端服务默认运行在 `http://localhost:9090`
 
 ### 4. 前端配置与启动
 
@@ -110,7 +110,7 @@ npm install
 npm run serve
 ```
 
-前端服务默认运行在 `http://localhost:8081`
+前端服务默认运行在 `http://localhost:8080`
 
 ### 5. 生产环境构建
 
@@ -130,43 +130,45 @@ mvn clean package
 Iass/
 ├── vue/                          # 前端 Vue.js 项目
 │   ├── public/                   # 静态资源文件
+│   ├── src/                      # 源代码目录
 │   │   ├── assets/              # 资源文件 (图片、样式等)
-│   │   ├── src/                 # 源代码目录
-│   │   │   ├── components/      # Vue 组件
-│   │   │   ├── router/          # 路由配置
-│   │   │   ├── utils/           # 工具类
-│   │   │   ├── views/           # 页面组件
-│   │   │   ├── App.vue          # 根组件
-│   │   │   └── main.js          # 入口文件
-│   │   ├── babel.config.js      # Babel 配置
-│   │   ├── jsconfig.json        # JavaScript 配置
-│   │   ├── package.json         # 前端依赖配置
-│   │   └── vue.config.js        # Vue CLI 配置
-│   ├── springboot/               # 后端 SpringBoot 项目
-│   │   ├── src/main/java/com/example/
-│   │   │   ├── common/          # 公共类
-│   │   │   ├── controller/      # 控制器层
-│   │   │   ├── entity/          # 实体类
-│   │   │   ├── exception/       # 异常处理
-│   │   │   ├── mapper/          # 数据访问层
-│   │   │   ├── service/         # 业务逻辑层
-│   │   │   ├── utils/           # 工具类
-│   │   │   └── SpringbootApplication.java  # 启动类
-│   │   ├── src/main/resources/  # 配置文件
-│   │   └── pom.xml              # Maven 配置
-│   ├── database/                 # 数据库脚本
-│   │   ├── backend.sql          # 主数据库结构
-│   │   └── customer_package_record.sql  # 客户包记录表
-│   ├── package.json             # 根目录依赖 (Markdown 插件)
-│   ├── .gitignore               # Git 忽略文件
-│   └── README.md                # 项目说明文档
+│   │   ├── components/          # Vue 组件
+│   │   ├── router/              # 路由配置
+│   │   ├── utils/               # 工具类
+│   │   ├── views/               # 页面组件
+│   │   ├── App.vue              # 根组件
+│   │   └── main.js              # 入口文件
+│   ├── babel.config.js          # Babel 配置
+│   ├── jsconfig.json            # JavaScript 配置
+│   ├── package.json             # 前端依赖配置
+│   └── vue.config.js            # Vue CLI 配置
+├── springboot/                   # 后端 SpringBoot 项目
+│   ├── src/main/java/com/example/
+│   │   ├── common/              # 公共类
+│   │   ├── controller/          # 控制器层
+│   │   ├── entity/              # 实体类
+│   │   ├── exception/           # 异常处理
+│   │   ├── mapper/              # 数据访问层
+│   │   ├── service/             # 业务逻辑层
+│   │   ├── utils/               # 工具类
+│   │   └── SpringbootApplication.java  # 启动类
+│   ├── src/main/resources/      # 配置文件
+│   ├── files/                   # 用户上传文件目录 (不在Git中)
+│   └── pom.xml                  # Maven 配置
+├── database/                     # 数据库脚本
+│   ├── backend.sql              # 主数据库结构
+│   └── customer_package_record.sql  # 客户包记录表
+├── package.json                 # 根目录依赖 (Markdown 插件)
+├── .gitignore                   # Git 忽略文件
+├── README.md                    # 项目说明文档
+└── DEPLOY.md                    # 部署指南
 ```
 
 ## 🔧 开发指南
 
 ### API 接口
 
-后端 API 接口默认地址：`http://localhost:8080/api`
+后端 API 接口默认地址：`http://localhost:9090/api`
 
 ### 前端代理配置
 
@@ -175,7 +177,7 @@ Iass/
 ```javascript
 // vue/src/utils/request.js
 const request = axios.create({
-  baseURL: process.env.VUE_APP_BASEURL || 'http://localhost:8080',
+  baseURL: process.env.VUE_APP_BASEURL || 'http://localhost:9090',
   timeout: 5000
 })
 ```
