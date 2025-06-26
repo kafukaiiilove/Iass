@@ -171,7 +171,11 @@
           </template>
         </el-table-column>
         <el-table-column prop="imageId" label="镜像ID" width="150" show-overflow-tooltip></el-table-column>
-        <el-table-column prop="remarks" label="备注" show-overflow-tooltip></el-table-column>
+        <el-table-column label="备注" show-overflow-tooltip>
+          <template slot-scope="scope">
+            <div v-html="formatContentWithImagePreview(scope.row.remarks)" class="remarks-content"></div>
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="180" align="center" fixed="right">
           <template slot-scope="scope">
             <el-button type="primary" size="mini" @click="handleEdit(scope.row)">编辑</el-button>
@@ -301,13 +305,24 @@
         </el-row>
         
         <el-form-item label="备注" prop="remarks">
-          <el-input 
-            type="textarea" 
-            :rows="4" 
-            v-model="form.remarks" 
-            autocomplete="off"
-            placeholder="请输入备注信息">
-          </el-input>
+          <div class="remarks-editor-wrapper">
+            <div class="editor-container">
+              <Toolbar
+                style="border-bottom: 1px solid #dcdfe6"
+                :editor="remarksEditorRef"
+                :defaultConfig="toolbarConfig"
+                mode="default"
+              />
+              <Editor
+                style="height: 200px; overflow-y: hidden;"
+                v-model="form.remarks"
+                :defaultConfig="editorConfig"
+                mode="default"
+                @onCreated="handleRemarksEditorCreated"
+                @onChange="handleRemarksChange"
+              />
+            </div>
+          </div>
         </el-form-item>
       </el-form>
       <div slot="footer" class="dialog-footer">
@@ -315,12 +330,47 @@
         <el-button type="primary" @click="save" class="confirm-btn">确 定</el-button>
       </div>
     </el-dialog>
+
+    <!-- 图片预览对话框 -->
+    <el-dialog
+      :visible.sync="previewVisible"
+      :append-to-body="true"
+      :modal-append-to-body="true"
+      :close-on-click-modal="true"
+      :close-on-press-escape="true"
+      custom-class="image-preview-dialog"
+      width="90%"
+      :fullscreen="true"
+      center
+      @close="previewVisible = false">
+      <div class="preview-content">
+        <img
+          :src="previewImageUrl"
+          class="preview-full-image"
+          alt="预览图片"
+          :style="{ transform: `scale(${imageScale})`, transition: 'transform 0.2s' }"
+          @wheel="handleImageWheel"
+        >
+      </div>
+      <div class="preview-controls">
+        <el-button size="small" @click="zoomIn">放大</el-button>
+        <el-button size="small" @click="zoomOut">缩小</el-button>
+        <el-button size="small" @click="resetZoom">重置</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script>
+import '@wangeditor/editor/dist/css/style.css' // 引入 css
+import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
+
 export default {
   name: "CustomerPackage",
+  components: {
+    Editor,
+    Toolbar
+  },
   data() {
     return {
       tableData: [],
@@ -352,7 +402,15 @@ export default {
       version: this.$route.params.version,
       category: this.$route.params.category || (this.$route.params.version === 'all' ? 'all' : 'vmos'),
       activeCategory: this.$route.params.category || (this.$route.params.version === 'all' ? 'all' : 'vmos'),
-      saving: false
+      saving: false,
+      // 富文本编辑器相关
+      remarksEditorRef: null,
+      toolbarConfig: {},
+      editorConfig: null,
+      // 图片预览相关
+      previewVisible: false,
+      previewImageUrl: '',
+      imageScale: 1
     };
   },
   computed: {
@@ -419,7 +477,22 @@ export default {
     }
   },
   created() {
+    this.initEditorConfig();
     this.load(1);
+  },
+  mounted() {
+    // 监听图片预览事件
+    document.addEventListener('preview-image', (e) => {
+      this.handlePreviewImage(e.detail);
+    });
+  },
+  beforeDestroy() {
+    // 清理事件监听
+    document.removeEventListener('preview-image', this.handlePreviewImage);
+    // 清理富文本编辑器
+    if (this.remarksEditorRef) {
+      this.remarksEditorRef.destroy();
+    }
   },
     watch: {
     '$route.params': {
@@ -445,6 +518,42 @@ export default {
     }
   },
   methods: {
+    // 初始化编辑器配置
+    initEditorConfig() {
+      const user = JSON.parse(localStorage.getItem('xm-user') || '{}');
+      this.editorConfig = {
+        placeholder: '请输入备注信息...',
+        MENU_CONF: {
+          uploadImage: {
+            server: this.$baseUrl + '/api/manager/files/upload',
+            fieldName: 'file',
+            maxFileSize: 5 * 1024 * 1024, // 5M
+            allowedFileTypes: ['image/*'],
+            headers: {
+              'token': user.token || ''
+            },
+            customInsert: (res, insertFn) => {
+              console.log('上传响应:', res);
+              if (res.code === '200') {
+                // 确保图片URL是完整的
+                let imageUrl = res.data;
+                if (!imageUrl.startsWith('http')) {
+                  imageUrl = this.$baseUrl + imageUrl;
+                }
+                insertFn(imageUrl);
+                this.$message.success('图片上传成功');
+              } else {
+                this.$message.error(res.msg || '图片上传失败');
+              }
+            },
+            onError: (file, err, res) => {
+              console.error('上传失败:', err, res);
+              this.$message.error('图片上传失败，请重试');
+            }
+          }
+        }
+      };
+    },
     // 测试API连接
     testApiConnection() {
       console.log('开始测试API连接');
@@ -605,10 +714,14 @@ export default {
         this.form.category = this.category;
       }
       
+      // 重新初始化编辑器配置以获取最新token
+      this.initEditorConfig();
       this.dialogFormVisible = true;
     },
     handleEdit(row) {
       this.form = JSON.parse(JSON.stringify(row));
+      // 重新初始化编辑器配置以获取最新token
+      this.initEditorConfig();
       this.dialogFormVisible = true;
     },
     formatDateTime(date) {
@@ -887,6 +1000,55 @@ export default {
         ]
       };
       return categoryMap[version] || baseCategories;
+    },
+    // 富文本编辑器相关方法
+    handleRemarksEditorCreated(editor) {
+      this.remarksEditorRef = editor;
+      console.log('富文本编辑器创建成功');
+    },
+    handleRemarksChange(editor) {
+      this.form.remarks = editor.getHtml();
+    },
+    // 图片预览相关方法
+    formatContentWithImagePreview(content) {
+      if (!content) return '';
+      
+      // 将图片标签转换为可点击预览的格式
+      return content.replace(/<img[^>]+src="([^">]+)"[^>]*>/g, (match, src) => {
+        // 处理相对路径为绝对路径
+        let fullUrl = src;
+        if (!src.startsWith('http')) {
+          fullUrl = this.$baseUrl + src;
+        }
+        
+        return `<div class="image-preview-container" onclick="document.dispatchEvent(new CustomEvent('preview-image', {detail: '${fullUrl}'}))">
+          <img src="${fullUrl}" class="preview-image" alt="预览图片">
+        </div>`;
+      });
+    },
+    handlePreviewImage(url) {
+      this.previewImageUrl = url;
+      this.previewVisible = true;
+      this.imageScale = 1; // 打开时重置缩放
+    },
+    handleImageWheel(e) {
+      e.preventDefault();
+      if (e.deltaY < 0) {
+        // 放大
+        this.imageScale = Math.min(this.imageScale + 0.1, 5);
+      } else {
+        // 缩小
+        this.imageScale = Math.max(this.imageScale - 0.1, 0.2);
+      }
+    },
+    zoomIn() {
+      this.imageScale = Math.min(this.imageScale + 0.2, 5);
+    },
+    zoomOut() {
+      this.imageScale = Math.max(this.imageScale - 0.2, 0.2);
+    },
+    resetZoom() {
+      this.imageScale = 1;
     },
     handlePackageUrlChange(value) {
       // 当镜像包地址输入时，自动提取Commit ID
@@ -1197,5 +1359,153 @@ export default {
 .test-result-select:hover :deep(.el-input__inner) {
   border-color: #409eff;
   box-shadow: 0 0 0 2px rgba(64,158,255,0.1);
+}
+
+/* 备注编辑器样式 */
+.remarks-editor-wrapper {
+  position: relative;
+}
+
+.editor-container {
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.editor-toggle {
+  text-align: right;
+}
+
+.remarks-content {
+  max-height: 120px;
+  overflow: hidden;
+  word-break: break-all;
+  line-height: 1.5;
+  text-align: left;
+  padding: 8px;
+}
+
+/* 图片预览容器样式 */
+.image-preview-container {
+  display: inline-block;
+  cursor: pointer;
+  margin: 4px;
+  transition: all 0.3s;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.image-preview-container:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.preview-image {
+  max-width: 150px;
+  max-height: 100px;
+  display: block;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.remarks-content .preview-image {
+  max-width: 200px;
+  max-height: 150px;
+  display: inline-block;
+  vertical-align: middle;
+  margin: 8px auto;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  object-fit: contain;
+}
+
+/* 图片预览对话框样式 */
+:deep(.image-preview-dialog) {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+:deep(.image-preview-dialog .el-dialog) {
+  background: transparent;
+  box-shadow: none;
+}
+
+:deep(.image-preview-dialog .el-dialog__header) {
+  display: none;
+}
+
+:deep(.image-preview-dialog .el-dialog__body) {
+  padding: 0;
+  background: transparent;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.preview-content {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.preview-full-image {
+  max-width: 90%;
+  max-height: 90%;
+  object-fit: contain;
+  user-select: none;
+  cursor: grab;
+}
+
+.preview-full-image:active {
+  cursor: grabbing;
+}
+
+.preview-controls {
+  position: fixed;
+  bottom: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 10px 20px;
+  border-radius: 25px;
+  display: flex;
+  gap: 10px;
+}
+
+.preview-controls .el-button {
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  color: #333;
+}
+
+.preview-controls .el-button:hover {
+  background: white;
+}
+
+/* 富文本编辑器样式 */
+:deep(.w-e-text-container) {
+  min-height: 200px !important;
+}
+
+:deep(.w-e-toolbar) {
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+}
+
+:deep(.w-e-bar-item) {
+  padding: 0 8px !important;
+}
+
+:deep(.w-e-bar-divider) {
+  margin: 0 8px !important;
+}
+
+:deep(.w-e-text-container .w-e-text) {
+  padding: 12px !important;
 }
 </style> 
