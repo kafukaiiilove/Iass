@@ -16,7 +16,11 @@
         <el-table-column prop="name" label="姓名"></el-table-column>
         <el-table-column prop="phone" label="电话"></el-table-column>
         <el-table-column prop="email" label="邮箱"></el-table-column>
-        <el-table-column prop="role" label="角色"></el-table-column>
+        <el-table-column prop="role" label="角色">
+          <template slot-scope="scope">
+            {{ getRoleText(scope.row.role) }}
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="180">
           <template slot-scope="scope">
             <el-button type="primary" @click="handleEdit(scope.row)">编辑</el-button>
@@ -54,7 +58,8 @@
         <el-form-item label="角色" prop="role">
           <el-select v-model="form.role" placeholder="请选择角色">
             <el-option label="管理员" value="ADMIN"></el-option>
-            <el-option label="用户" value="USER"></el-option>
+            <el-option label="开发工程师" value="KaiFa"></el-option>
+            <el-option label="测试工程师" value="CeShi"></el-option>
           </el-select>
         </el-form-item>
       </el-form>
@@ -178,6 +183,14 @@ export default {
     handleCurrentChange(pageNum) {
       this.pageNum = pageNum
       this.load()
+    },
+    getRoleText(role) {
+      const roleMap = {
+        'ADMIN': '管理员',
+        'KaiFa': '开发工程师',
+        'CeShi': '测试工程师'
+      }
+      return roleMap[role] || role
     }
   }
 }

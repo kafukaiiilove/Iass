@@ -27,7 +27,11 @@
         <el-dropdown @command="handleCommand">
           <span class="el-dropdown-link">
             <el-avatar :size="32" :src="avatarUrl" style="margin-right: 8px;"></el-avatar>
-            {{ user?.name }}<i class="el-icon-arrow-down el-icon--right"></i>
+            <div class="user-info">
+              <div class="user-name">{{ user?.name }}</div>
+              <div class="user-role">{{ roleDisplayName }}</div>
+            </div>
+            <i class="el-icon-arrow-down el-icon--right"></i>
           </span>
           <el-dropdown-menu slot="dropdown">
             <el-dropdown-item command="adminPerson">个人信息</el-dropdown-item>
@@ -135,7 +139,7 @@
             </el-menu-item>
           </el-submenu>
 
-          <el-submenu index="system">
+          <el-submenu index="system" v-if="hasSystemPermission">
             <template slot="title">
               <i class="el-icon-setting"></i>
               <span>系统管理</span>
@@ -153,6 +157,16 @@
               <span>修改密码</span>
             </el-menu-item>
           </el-submenu>
+          
+          <!-- 非管理员用户的个人信息和修改密码 -->
+          <el-menu-item index="/manager/adminPerson" v-if="!hasSystemPermission">
+            <i class="el-icon-user-solid"></i>
+            <span slot="title">个人信息</span>
+          </el-menu-item>
+          <el-menu-item index="/manager/password" v-if="!hasSystemPermission">
+            <i class="el-icon-lock"></i>
+            <span slot="title">修改密码</span>
+          </el-menu-item>
 
           
         </el-menu>
@@ -169,6 +183,7 @@
 
 <script>
 import Vue from 'vue'
+import { hasSystemPermission, getCurrentUserRole, getRoleDisplayName } from '@/utils/permissions'
 
 export default {
   name: "Manager",
@@ -195,6 +210,16 @@ export default {
       
       console.log('Using avatar URL:', url);
       return url;
+    },
+    // 权限相关计算属性
+    hasSystemPermission() {
+      return hasSystemPermission()
+    },
+    currentUserRole() {
+      return getCurrentUserRole()
+    },
+    roleDisplayName() {
+      return getRoleDisplayName(this.currentUserRole)
     }
   },
   created() {
@@ -645,6 +670,30 @@ export default {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-right: 8px;
+}
+
+.user-name {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.user-role {
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.2;
+  margin-top: 2px;
+}
+
+.dark-mode .user-role {
+  color: #b0b0b0;
 }
 
 .manager-main {

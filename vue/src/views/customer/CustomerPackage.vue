@@ -2,6 +2,13 @@
   <div>
     <div class="header">
       <h1 class="page-title">{{ pageTitle }}</h1>
+      <div class="role-indicator" v-if="currentRole !== 'ADMIN'">
+        <el-tag 
+          :type="currentRole === 'KaiFa' ? 'warning' : 'info'" 
+          size="small">
+          {{ currentRole === 'KaiFa' ? '开发权限' : '测试权限' }}
+        </el-tag>
+      </div>
     </div>
     
     <!-- 添加分类选项卡 -->
@@ -103,8 +110,20 @@
     </div>
 
     <div class="operation">
-      <el-button type="primary" plain @click="handleAdd">新增记录</el-button>
-      <el-button type="danger" plain @click="delBatch">批量删除</el-button>
+      <el-button 
+        v-if="canAdd" 
+        type="primary" 
+        plain 
+        @click="handleAdd">
+        新增记录
+      </el-button>
+      <el-button 
+        v-if="canBatchDelete" 
+        type="danger" 
+        plain 
+        @click="delBatch">
+        批量删除
+      </el-button>
       <el-button type="info" plain @click="testApiConnection">测试API连接</el-button>
     </div>
 
@@ -161,7 +180,8 @@
               size="small" 
               style="width: 100px;"
               @change="handleTestResultChange(scope.row)"
-              :class="'test-result-select ' + getTestResultClass(scope.row.testResult)">
+              :class="'test-result-select ' + getTestResultClass(scope.row.testResult)"
+              :disabled="!isFieldEditable('testResult')">
               <el-option label="待测试" value="待测试"></el-option>
               <el-option label="测试中" value="测试中"></el-option>
               <el-option label="未通过" value="未通过"></el-option>
@@ -176,10 +196,22 @@
             <div v-html="formatContentWithImagePreview(scope.row.remarks)" class="remarks-content"></div>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180" align="center" fixed="right">
+        <el-table-column label="操作" :width="canDelete ? '180' : '120'" align="center" fixed="right">
           <template slot-scope="scope">
-            <el-button type="primary" size="mini" @click="handleEdit(scope.row)">编辑</el-button>
-            <el-button type="danger" size="mini" @click="handleDelete(scope.row.id)">删除</el-button>
+            <el-button 
+              v-if="canEdit" 
+              type="primary" 
+              size="mini" 
+              @click="handleEdit(scope.row)">
+              编辑
+            </el-button>
+            <el-button 
+              v-if="canDelete" 
+              type="danger" 
+              size="mini" 
+              @click="handleDelete(scope.row.id)">
+              删除
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -199,7 +231,7 @@
     </div>
 
     <el-dialog
-      :title="form.id ? '编辑记录' : '新增记录'"
+      :title="getDialogTitle()"
       :visible.sync="dialogFormVisible"
       width="70%"
       :close-on-click-modal="false"
@@ -211,7 +243,11 @@
         <el-row v-if="version === 'all' || form.id" :gutter="20">
           <el-col :span="12">
             <el-form-item label="Android版本" prop="androidVersion">
-              <el-select v-model="form.androidVersion" placeholder="请选择Android版本" style="width: 100%" :disabled="version !== 'all'">
+              <el-select 
+                v-model="form.androidVersion" 
+                placeholder="请选择Android版本" 
+                style="width: 100%" 
+                :disabled="version !== 'all' || !isFieldEditable('androidVersion')">
                 <el-option label="Android 10" value="a10"></el-option>
                 <el-option label="Android 13" value="a13"></el-option>
                 <el-option label="Android 14" value="a14"></el-option>
@@ -221,7 +257,11 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="分类" prop="category">
-              <el-select v-model="form.category" placeholder="请选择分类" style="width: 100%">
+              <el-select 
+                v-model="form.category" 
+                placeholder="请选择分类" 
+                style="width: 100%"
+                :disabled="!isFieldEditable('category')">
                 <el-option 
                   v-for="category in getAvailableCategoriesForVersion(form.androidVersion || version)" 
                   :key="category.value"
@@ -241,7 +281,8 @@
                 type="datetime" 
                 placeholder="选择日期时间" 
                 value-format="yyyy-MM-dd HH:mm"
-                style="width: 100%">
+                style="width: 100%"
+                :disabled="!isFieldEditable('recordDate')">
               </el-date-picker>
             </el-form-item>
           </el-col>
@@ -251,7 +292,8 @@
                 v-model="form.packageUrl" 
                 autocomplete="off" 
                 placeholder="请输入镜像包下载地址"
-                @input="handlePackageUrlChange">
+                @input="handlePackageUrlChange"
+                :disabled="!isFieldEditable('packageUrl')">
               </el-input>
             </el-form-item>
           </el-col>
@@ -263,24 +305,40 @@
             :rows="6" 
             v-model="form.fixContent" 
             autocomplete="off"
-            placeholder="请详细描述修复的内容和问题">
+            placeholder="请详细描述修复的内容和问题"
+            :disabled="!isFieldEditable('fixContent')">
           </el-input>
         </el-form-item>
         
         <el-row :gutter="20">
           <el-col :span="8">
             <el-form-item label="开发工程师" prop="developer">
-              <el-input v-model="form.developer" autocomplete="off" placeholder="请输入开发工程师姓名"></el-input>
+              <el-input 
+                v-model="form.developer" 
+                autocomplete="off" 
+                placeholder="请输入开发工程师姓名"
+                :disabled="!isFieldEditable('developer')">
+              </el-input>
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item label="Commit ID" prop="commitId">
-              <el-input v-model="form.commitId" autocomplete="off" placeholder="请输入Commit ID"></el-input>
+              <el-input 
+                v-model="form.commitId" 
+                autocomplete="off" 
+                placeholder="请输入Commit ID"
+                :disabled="!isFieldEditable('commitId')">
+              </el-input>
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item label="测试工程师" prop="tester">
-              <el-input v-model="form.tester" autocomplete="off" placeholder="请输入测试工程师姓名"></el-input>
+              <el-input 
+                v-model="form.tester" 
+                autocomplete="off" 
+                placeholder="请输入测试工程师姓名"
+                :disabled="!isFieldEditable('tester')">
+              </el-input>
             </el-form-item>
           </el-col>
         </el-row>
@@ -288,18 +346,28 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="测试结果" prop="testResult">
-              <el-select v-model="form.testResult" placeholder="请选择测试结果" style="width: 100%">
-                <el-option label="待测试" value="待测试"></el-option>
-                <el-option label="测试中" value="测试中"></el-option>
-                <el-option label="未通过" value="未通过"></el-option>
-                <el-option label="已完成" value="已完成"></el-option>
-                <el-option label="已取消" value="已取消"></el-option>
+              <el-select 
+                v-model="form.testResult" 
+                placeholder="请选择测试结果" 
+                style="width: 100%"
+                :disabled="!isFieldEditable('testResult')">
+                <el-option 
+                  v-for="option in testResultOptions"
+                  :key="option.value"
+                  :label="option.label" 
+                  :value="option.value">
+                </el-option>
               </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="镜像ID" prop="imageId">
-              <el-input v-model="form.imageId" autocomplete="off" placeholder="请输入镜像ID"></el-input>
+              <el-input 
+                v-model="form.imageId" 
+                autocomplete="off" 
+                placeholder="请输入镜像ID"
+                :disabled="!isFieldEditable('imageId')">
+              </el-input>
             </el-form-item>
           </el-col>
         </el-row>
@@ -320,6 +388,7 @@
                 mode="default"
                 @onCreated="handleRemarksEditorCreated"
                 @onChange="handleRemarksChange"
+                :disabled="!isFieldEditable('remarks')"
               />
             </div>
           </div>
@@ -364,6 +433,15 @@
 <script>
 import '@wangeditor/editor/dist/css/style.css' // 引入 css
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
+import { 
+  hasDeletePermission, 
+  hasBatchDeletePermission, 
+  hasAddPermission, 
+  hasEditPermission,
+  isFieldEditable,
+  filterEditableFormData,
+  getCurrentUserRole
+} from '@/utils/permissions'
 
 export default {
   name: "CustomerPackage",
@@ -474,6 +552,31 @@ export default {
         ]
       };
       return categoryMap[this.version] || baseCategories;
+    },
+    // 权限相关计算属性
+    canDelete() {
+      return hasDeletePermission()
+    },
+    canBatchDelete() {
+      return hasBatchDeletePermission()
+    },
+    canAdd() {
+      return hasAddPermission()
+    },
+    canEdit() {
+      return hasEditPermission()
+    },
+    currentRole() {
+      return getCurrentUserRole()
+    },
+    // 测试结果选项（测试工程师使用）
+    testResultOptions() {
+      return [
+        { label: '待测试', value: '待测试' },
+        { label: '测试中', value: '测试中' },
+        { label: '已完成', value: '已完成' },
+        { label: '测试失败', value: '测试失败' }
+      ]
     }
   },
   created() {
@@ -518,6 +621,18 @@ export default {
     }
   },
   methods: {
+    // 权限相关方法
+    isFieldEditable(fieldName) {
+      return isFieldEditable(fieldName)
+    },
+    
+    getDialogTitle() {
+      const isEdit = !!this.form.id;
+      const roleText = this.currentRole === 'KaiFa' ? ' (开发)' : 
+                       this.currentRole === 'CeShi' ? ' (测试)' : '';
+      return (isEdit ? '编辑记录' : '新增记录') + roleText;
+    },
+    
     // 初始化编辑器配置
     initEditorConfig() {
       const user = JSON.parse(localStorage.getItem('xm-user') || '{}');
@@ -596,24 +711,24 @@ export default {
       return classMap[testResult] || 'pending';
     },
     handleTestResultChange(row) {
+      // 检查权限
+      if (!this.isFieldEditable('testResult')) {
+        this.$message.warning('您没有权限修改测试结果');
+        this.load(this.pageNum); // 恢复原值
+        return;
+      }
+      
+      // 根据权限过滤数据
+      let updateData = row;
+      if (this.currentRole !== 'ADMIN') {
+        updateData = filterEditableFormData(row);
+      }
+      
       // 直接更新测试结果
       this.$request({
         url: '/manager/customer_package/update',
         method: 'PUT',
-        data: {
-          id: row.id,
-          recordDate: row.recordDate,
-          packageUrl: row.packageUrl,
-          fixContent: row.fixContent,
-          developer: row.developer,
-          commitId: row.commitId,
-          tester: row.tester,
-          testResult: row.testResult,
-          imageId: row.imageId,
-          remarks: row.remarks,
-          androidVersion: row.androidVersion,
-          category: row.category
-        }
+        data: updateData
       }).then(res => {
         if (res.code === '200') {
           this.$message({
@@ -776,14 +891,23 @@ export default {
 
           const url = this.form.id ? '/manager/customer_package/update' : '/manager/customer_package/add';
           const method = this.form.id ? 'PUT' : 'POST';
+          
+          // 根据权限过滤表单数据
+          let formData = this.form;
+          if (this.currentRole !== 'ADMIN') {
+            formData = filterEditableFormData(this.form);
+            console.log('过滤后的表单数据:', formData);
+          }
 
           console.log('开始保存数据:', {
             url: url,
             method: method,
-            data: this.form,
+            data: formData,
+            originalData: this.form,
             isEdit: !!this.form.id,
             currentVersion: this.version,
-            currentCategory: this.category
+            currentCategory: this.category,
+            userRole: this.currentRole
           });
 
           const startTime = Date.now();
@@ -791,7 +915,7 @@ export default {
           this.$request({
             url: url,
             method: method,
-            data: this.form,
+            data: formData,
             timeout: 30000 // 30秒超时
           }).then(res => {
             const endTime = Date.now();
@@ -1094,12 +1218,24 @@ export default {
 
 <style scoped>
 .header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 20px;
 }
+
 .page-title {
   font-size: 24px;
   color: #333;
-  margin-bottom: 15px;
+  margin: 0;
+  flex: 1;
+  text-align: left;
+}
+
+.role-indicator {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
 }
 .category-tabs {
   margin-bottom: 20px;
