@@ -6,6 +6,7 @@ import com.example.common.Result;
 import com.example.common.enums.ResultCodeEnum;
 import com.example.common.enums.RoleEnum;
 import com.example.entity.Account;
+import com.example.entity.Admin;
 import com.example.service.AdminService;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,22 +28,29 @@ public class WebController {
     }
 
     /**
-     * 登录
+     * 登录（根据用户名自动识别角色）
      */
     @PostMapping("/login")
     public Result login(@RequestBody Account account) {
-        if (ObjectUtil.isEmpty(account.getUsername()) || ObjectUtil.isEmpty(account.getPassword())
-                || ObjectUtil.isEmpty(account.getRole())) {
+        if (ObjectUtil.isEmpty(account.getUsername()) || ObjectUtil.isEmpty(account.getPassword())) {
             return Result.error(ResultCodeEnum.PARAM_LOST_ERROR);
         }
-        if (RoleEnum.ADMIN.name().equals(account.getRole())) {
-            account = adminService.login(account);
+        
+        // 根据用户名查找用户，自动识别角色
+        Admin dbUser = adminService.selectByUsername(account.getUsername());
+        if (ObjectUtil.isNull(dbUser)) {
+            return Result.error(ResultCodeEnum.USER_NOT_EXIST_ERROR);
         }
+        
+        // 设置角色并进行登录验证
+        account.setRole(dbUser.getRole());
+        account = adminService.login(account);
+        
         return Result.success(account);
     }
 
     /**
-     * 注册
+     * 注册（支持多角色）
      */
     @PostMapping("/register")
     public Result register(@RequestBody Account account) {
@@ -50,9 +58,16 @@ public class WebController {
                 || ObjectUtil.isEmpty(account.getRole())) {
             return Result.error(ResultCodeEnum.PARAM_LOST_ERROR);
         }
-        if (RoleEnum.ADMIN.name().equals(account.getRole())) {
+        
+        // 支持所有角色注册
+        if (RoleEnum.ADMIN.name().equals(account.getRole()) || 
+            RoleEnum.KaiFa.name().equals(account.getRole()) || 
+            RoleEnum.CeShi.name().equals(account.getRole())) {
             adminService.register(account);
+        } else {
+            return Result.error(ResultCodeEnum.PARAM_ERROR.code, "不支持的角色类型");
         }
+        
         return Result.success();
     }
 

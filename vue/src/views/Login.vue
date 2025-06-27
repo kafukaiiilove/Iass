@@ -89,7 +89,10 @@ export default {
   name: "Login",
   data() {
     return {
-      form: { role: 'ADMIN' },
+      form: { 
+        username: '',
+        password: ''
+      },
       rules: {
         username: [
           { required: true, message: '请输入账号', trigger: 'blur' },

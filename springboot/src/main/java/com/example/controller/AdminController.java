@@ -89,8 +89,13 @@ public class AdminController {
      */
     @PutMapping("/updatePassword")
     public Result updatePassword(@RequestBody Account account) {
-        adminService.updatePassword(account);
-        return Result.success();
+        try {
+            adminService.updatePassword(account);
+            return Result.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("500", "修改密码失败：" + e.getMessage());
+        }
     }
 
 }

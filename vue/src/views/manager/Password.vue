@@ -54,12 +54,49 @@ export default {
       this.$message.warning('请先登录')
       this.$router.push('/login')
     }
+    
+    // 调试：打印用户信息
+    console.log('Password组件 - 当前用户信息:', this.user)
+    console.log('用户名字段:', this.user.username)
+    console.log('角色字段:', this.user.role)
   },
   methods: {
+    // 根据用户角色获取对应的API路径
+    getPasswordUpdatePath() {
+      const userRole = this.user.role
+      console.log('当前用户角色:', userRole)
+      
+      switch (userRole) {
+        case 'ADMIN':
+          return 'manager/admin/updatePassword'
+        case 'KaiFa':
+          return 'manager/kaifa/updatePassword'
+        case 'CeShi':
+          return 'manager/ceshi/updatePassword'
+        default:
+          console.warn('未知角色:', userRole, '使用默认管理员路径')
+          return 'manager/admin/updatePassword'
+      }
+    },
+    
     update() {
       this.$refs.formRef.validate((valid) => {
         if (valid) {
-          this.$request.put('/api/manager/admin/updatePassword', this.user).then(res => {
+          // 根据用户角色动态获取API路径
+          const apiPath = this.getPasswordUpdatePath()
+          console.log('使用API路径:', apiPath)
+          console.log('发送的用户数据:', this.user)
+          
+          // 确保数据结构正确
+          const requestData = {
+            username: this.user.username,
+            password: this.user.password,
+            newPassword: this.user.newPassword,
+            role: this.user.role
+          }
+          console.log('实际发送的请求数据:', requestData)
+          
+          this.$request.put(apiPath, requestData).then(res => {
             if (res.code === '200') {
               // 成功更新
               localStorage.removeItem('xm-user')   // 清除缓存的用户信息
@@ -74,13 +111,13 @@ export default {
           })
         }
       })
-    },
+    }
   }
 }
 </script>
 
 <style scoped>
-/deep/.el-form-item__label {
+.el-form-item__label {
   font-weight: bold;
 }
 </style>

@@ -18,7 +18,7 @@ import javax.annotation.Resource;
 import java.util.List;
 
 /**
- * 管理员业务处理
+ * 用户业务处理（支持多角色）
  **/
 @Service
 public class AdminService {
@@ -27,7 +27,7 @@ public class AdminService {
     private AdminMapper adminMapper;
 
     /**
-     * 新增
+     * 新增用户
      */
     public void add(Admin admin) {
         Admin dbAdmin = adminMapper.selectByUsername(admin.getUsername());
@@ -40,7 +40,7 @@ public class AdminService {
         if (ObjectUtil.isEmpty(admin.getName())) {
             admin.setName(admin.getUsername());
         }
-        // 如果没有设置角色，默认为管理员
+        // 如果没有设置角色，默认为测试工程师
         if (ObjectUtil.isEmpty(admin.getRole())) {
             admin.setRole(RoleEnum.CeShi.name());
         }
@@ -48,14 +48,14 @@ public class AdminService {
     }
 
     /**
-     * 删除
+     * 删除用户
      */
     public void deleteById(Integer id) {
         adminMapper.deleteById(id);
     }
 
     /**
-     * 批量删除
+     * 批量删除用户
      */
     public void deleteBatch(List<Integer> ids) {
         for (Integer id : ids) {
@@ -64,28 +64,28 @@ public class AdminService {
     }
 
     /**
-     * 修改
+     * 修改用户信息
      */
     public void updateById(Admin admin) {
         adminMapper.updateById(admin);
     }
 
     /**
-     * 根据ID查询
+     * 根据ID查询用户
      */
     public Admin selectById(Integer id) {
         return adminMapper.selectById(id);
     }
 
     /**
-     * 查询所有
+     * 查询所有用户
      */
     public List<Admin> selectAll(Admin admin) {
         return adminMapper.selectAll(admin);
     }
 
     /**
-     * 分页查询
+     * 分页查询用户
      */
     public PageInfo<Admin> selectPage(Admin admin, Integer pageNum, Integer pageSize) {
         PageHelper.startPage(pageNum, pageSize);
@@ -94,25 +94,40 @@ public class AdminService {
     }
 
     /**
-     * 登录
+     * 根据用户名查询用户
+     */
+    public Admin selectByUsername(String username) {
+        return adminMapper.selectByUsername(username);
+    }
+
+    /**
+     * 多角色登录支持
      */
     public Account login(Account account) {
-        Account dbAdmin = adminMapper.selectByUsername(account.getUsername());
+        Admin dbAdmin = adminMapper.selectByUsername(account.getUsername());
         if (ObjectUtil.isNull(dbAdmin)) {
             throw new CustomException(ResultCodeEnum.USER_NOT_EXIST_ERROR);
         }
+        
+        // 验证角色是否匹配
+        if (!account.getRole().equals(dbAdmin.getRole())) {
+            throw new CustomException(ResultCodeEnum.USER_ACCOUNT_ERROR);
+        }
+        
+        // 验证密码
         if (!account.getPassword().equals(dbAdmin.getPassword())) {
             throw new CustomException(ResultCodeEnum.USER_ACCOUNT_ERROR);
         }
-        // 生成token
-        String tokenData = dbAdmin.getId() + "-" + RoleEnum.ADMIN.name();
+        
+        // 生成token，包含用户ID和角色信息
+        String tokenData = dbAdmin.getId() + "-" + dbAdmin.getRole();
         String token = TokenUtils.createToken(tokenData, dbAdmin.getPassword());
         dbAdmin.setToken(token);
         return dbAdmin;
     }
 
     /**
-     * 注册
+     * 注册新用户
      */
     public void register(Account account) {
         Admin admin = new Admin();
@@ -121,18 +136,39 @@ public class AdminService {
     }
 
     /**
-     * 修改密码
+     * 修改密码（支持多角色）
      */
     public void updatePassword(Account account) {
         Admin dbAdmin = adminMapper.selectByUsername(account.getUsername());
         if (ObjectUtil.isNull(dbAdmin)) {
             throw new CustomException(ResultCodeEnum.USER_NOT_EXIST_ERROR);
         }
+        
+        // 验证原密码
         if (!account.getPassword().equals(dbAdmin.getPassword())) {
             throw new CustomException(ResultCodeEnum.PARAM_PASSWORD_ERROR);
         }
+        
+        // 更新密码
         dbAdmin.setPassword(account.getNewPassword());
         adminMapper.updateById(dbAdmin);
     }
 
+    /**
+     * 根据角色查询用户列表
+     */
+    public List<Admin> selectByRole(String role) {
+        Admin admin = new Admin();
+        admin.setRole(role);
+        return adminMapper.selectAll(admin);
+    }
+
+    /**
+     * 分页查询指定角色的用户
+     */
+    public PageInfo<Admin> selectPageByRole(String role, Integer pageNum, Integer pageSize) {
+        Admin admin = new Admin();
+        admin.setRole(role);
+        return selectPage(admin, pageNum, pageSize);
+    }
 }

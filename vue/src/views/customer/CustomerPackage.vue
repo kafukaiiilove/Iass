@@ -623,7 +623,8 @@ export default {
   methods: {
     // 权限相关方法
     isFieldEditable(fieldName) {
-      return isFieldEditable(fieldName)
+      const isAddMode = !this.form.id; // 没有ID表示新增模式
+      return isFieldEditable(fieldName, isAddMode)
     },
     
     getDialogTitle() {
@@ -721,7 +722,8 @@ export default {
       // 根据权限过滤数据
       let updateData = row;
       if (this.currentRole !== 'ADMIN') {
-        updateData = filterEditableFormData(row);
+        const isAddMode = false; // 表格中的编辑是修改现有记录
+        updateData = filterEditableFormData(row, isAddMode);
       }
       
       // 直接更新测试结果
@@ -894,8 +896,9 @@ export default {
           
           // 根据权限过滤表单数据
           let formData = this.form;
+          const isAddMode = !this.form.id;
           if (this.currentRole !== 'ADMIN') {
-            formData = filterEditableFormData(this.form);
+            formData = filterEditableFormData(this.form, isAddMode);
             console.log('过滤后的表单数据:', formData);
           }
 

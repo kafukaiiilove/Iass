@@ -47,7 +47,7 @@ public class TokenUtils {
     }
 
     /**
-     * 获取当前登录的用户信息
+     * 获取当前登录的用户信息（支持多角色）
      */
     public static Account getCurrentUser() {
         try {
@@ -57,7 +57,11 @@ public class TokenUtils {
                 String userRole = JWT.decode(token).getAudience().get(0);
                 String userId = userRole.split("-")[0];  // 获取用户id
                 String role = userRole.split("-")[1];    // 获取角色
-                if (RoleEnum.ADMIN.name().equals(role)) {
+                
+                // 支持所有角色的用户获取
+                if (RoleEnum.ADMIN.name().equals(role) || 
+                    RoleEnum.KaiFa.name().equals(role) || 
+                    RoleEnum.CeShi.name().equals(role)) {
                     return staticAdminService.selectById(Integer.valueOf(userId));
                 }
             }

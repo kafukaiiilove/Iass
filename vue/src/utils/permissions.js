@@ -53,7 +53,7 @@ export function hasBatchDeletePermission() {
 
 // 检查是否有新增记录权限
 export function hasAddPermission() {
-  return isAdmin() || isKaiFa() // 管理员和开发工程师可以新增
+  return isAdmin() || isKaiFa() || isCeshi() // 管理员、开发工程师和测试工程师可以新增
 }
 
 // 检查是否有编辑权限
@@ -82,7 +82,7 @@ export const CESHI_EDITABLE_FIELDS = [
 ]
 
 // 检查字段是否可编辑
-export function isFieldEditable(fieldName) {
+export function isFieldEditable(fieldName, isAddMode = false) {
   const role = getCurrentUserRole()
   
   if (role === ROLES.ADMIN) {
@@ -92,8 +92,12 @@ export function isFieldEditable(fieldName) {
     // 开发工程师只能编辑指定字段
     return KAIFA_EDITABLE_FIELDS.includes(fieldName)
   } else if (role === ROLES.CESHI) {
-    // 测试工程师只能编辑指定字段
-    return CESHI_EDITABLE_FIELDS.includes(fieldName)
+    // 测试工程师：新增时可以编辑所有字段，编辑时只能编辑指定字段
+    if (isAddMode) {
+      return true
+    } else {
+      return CESHI_EDITABLE_FIELDS.includes(fieldName)
+    }
   }
   
   return false
@@ -130,7 +134,14 @@ export function getEditableFields() {
 }
 
 // 过滤表单数据，只保留当前用户可编辑的字段
-export function filterEditableFormData(formData) {
+export function filterEditableFormData(formData, isAddMode = false) {
+  const role = getCurrentUserRole()
+  
+  // 管理员或者测试工程师新增时，返回所有数据
+  if (role === ROLES.ADMIN || (role === ROLES.CESHI && isAddMode)) {
+    return formData
+  }
+  
   const editableFields = getEditableFields()
   const filteredData = {}
   
