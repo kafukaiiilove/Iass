@@ -40,7 +40,10 @@ public class AdminService {
         if (ObjectUtil.isEmpty(admin.getName())) {
             admin.setName(admin.getUsername());
         }
-        admin.setRole(RoleEnum.ADMIN.name());
+        // 如果没有设置角色，默认为管理员
+        if (ObjectUtil.isEmpty(admin.getRole())) {
+            admin.setRole(RoleEnum.CeShi.name());
+        }
         adminMapper.insert(admin);
     }
 
