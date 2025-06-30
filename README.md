@@ -1,4 +1,4 @@
-# Manager 管理后台系统
+# Iass管理后台系统
 
 一个基于 **Vue.js 2.6 + SpringBoot 2.5.9 + MySQL** 的前后端分离管理系统。
 
