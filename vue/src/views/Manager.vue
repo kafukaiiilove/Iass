@@ -139,6 +139,18 @@
             </el-menu-item>
           </el-submenu>
 
+          <!-- 幸运大转盘 -->
+          <el-menu-item index="/manager/lucky-wheel">
+            <i class="el-icon-magic-stick"></i>
+            <span slot="title">幸运大转盘</span>
+          </el-menu-item>
+
+          <!-- 一键打包 -->
+          <el-menu-item index="/manager/one-click-package">
+            <i class="el-icon-box"></i>
+            <span slot="title">一键打包</span>
+          </el-menu-item>
+
           <el-submenu index="system">
             <template slot="title">
               <i class="el-icon-setting"></i>

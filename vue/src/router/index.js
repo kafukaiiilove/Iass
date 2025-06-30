@@ -125,7 +125,9 @@ const routes = [
       { path: 'a12', name: 'A12', meta: { name: 'Android 12' }, component: () => import('../views/manager/A12') },
       { path: 'a13', name: 'A13', meta: { name: 'Android 13' }, component: () => import('../views/manager/A13') },
       { path: 'a14', name: 'A14', meta: { name: 'Android 14' }, component: () => import('../views/manager/A14') },
-      { path: 'a15', name: 'A15', meta: { name: 'Android 15' }, component: () => import('../views/manager/A15') }
+      { path: 'a15', name: 'A15', meta: { name: 'Android 15' }, component: () => import('../views/manager/A15') },
+      { path: 'lucky-wheel', name: 'LuckyWheel', meta: { name: '幸运大转盘' }, component: () => import('../views/manager/LuckyWheel') },
+      { path: 'one-click-package', name: 'OneClickPackage', meta: { name: '一键打包' }, component: () => import('../views/manager/OneClickPackage') }
     ]
   },
   { path: '/admin', redirect: '/manager/admin' },
