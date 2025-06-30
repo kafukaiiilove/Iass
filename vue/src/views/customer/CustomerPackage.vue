@@ -132,16 +132,12 @@
         placeholder="选择分类" 
         style="width: 250px; margin-left: 10px;"
         clearable>
-        <el-option label="VMOS" value="vmos"></el-option>
-        <el-option label="公共包" value="public"></el-option>
-        <el-option label="上海通用" value="shanghai_common"></el-option>
-        <el-option label="QT" value="qt"></el-option>
-        <el-option label="巴德" value="bade"></el-option>
-        <el-option label="毕少" value="bishao"></el-option>
-        <el-option label="新硕" value="xinshuo"></el-option>
-        <el-option label="GeeLark" value="geelark"></el-option>
-        <el-option label="ML" value="ml"></el-option>
-        <el-option label="其他" value="other"></el-option>
+        <el-option 
+          v-for="category in getSearchCategoryOptions()" 
+          :key="category.value"
+          :label="category.label" 
+          :value="category.value">
+        </el-option>
       </el-select>
       
       <el-button type="primary" plain style="margin-left: 10px" @click="load(1)">查询</el-button>
@@ -286,7 +282,8 @@
                 v-model="form.androidVersion" 
                 placeholder="请选择Android版本" 
                 style="width: 100%" 
-                :disabled="version !== 'all' || !isFieldEditable('androidVersion')">
+                :disabled="version !== 'all' || !isFieldEditable('androidVersion')"
+                clearable>
                 <el-option label="Android 10" value="a10"></el-option>
                 <el-option label="Android 13" value="a13"></el-option>
                 <el-option label="Android 14" value="a14"></el-option>
@@ -300,7 +297,8 @@
                 v-model="form.category" 
                 placeholder="请选择分类" 
                 style="width: 100%"
-                :disabled="!isFieldEditable('category')">
+                :disabled="!isFieldEditable('category')"
+                clearable>
                 <el-option 
                   v-for="category in getAvailableCategoriesForVersion(form.androidVersion || version)" 
                   :key="category.value"
@@ -676,6 +674,8 @@ export default {
     this.initEditorConfig();
     this.loadCategoriesFromBackend();
     this.load(1);
+    // 根据当前版本设置验证规则
+    this.updateValidationRules();
   },
   mounted() {
     // 监听图片预览事件
@@ -698,19 +698,43 @@ export default {
         this.category = newParams.category || (newParams.version === 'all' ? 'all' : 'vmos');
         this.activeCategory = this.category;
         this.loadCategoriesFromBackend(); // 重新加载分类
+        this.updateValidationRules(); // 更新验证规则
         this.load(1);
       },
       deep: true
     },
     'form.androidVersion': {
-      handler(newVersion) {
-        // 当Android版本改变时，重置分类选择
-        if (newVersion && this.form.category) {
+      handler(newVersion, oldVersion) {
+        console.log('Android版本变化:', oldVersion, '->', newVersion);
+        console.log('当前模式:', this.version);
+        console.log('字段可编辑性:', this.isFieldEditable('androidVersion'));
+        
+        // 当Android版本改变时，处理分类选择
+        if (newVersion) {
           const availableCategories = this.getAvailableCategoriesForVersion(newVersion);
-          const categoryExists = availableCategories.some(cat => cat.value === this.form.category);
-          if (!categoryExists) {
-            this.form.category = 'vmos'; // 默认选择VMOS
+          console.log('可用分类:', availableCategories);
+          
+          // 如果当前有分类选择，检查是否在新版本的分类列表中
+          if (this.form.category) {
+            const categoryExists = availableCategories.some(cat => cat.value === this.form.category);
+            if (!categoryExists) {
+              // 如果当前分类不存在于新版本中，选择第一个可用分类或默认VMOS
+              const defaultCategory = availableCategories.find(cat => cat.value === 'vmos') || availableCategories[0];
+              this.form.category = defaultCategory ? defaultCategory.value : 'vmos';
+              console.log('重置分类为:', this.form.category);
+            }
+          } else {
+            // 如果没有选择分类，设置默认分类
+            const defaultCategory = availableCategories.find(cat => cat.value === 'vmos') || availableCategories[0];
+            if (defaultCategory) {
+              this.form.category = defaultCategory.value;
+              console.log('设置默认分类:', this.form.category);
+            }
           }
+        } else {
+          // 如果版本被清空，也清空分类
+          this.form.category = '';
+          console.log('清空分类');
         }
       }
     }
@@ -819,6 +843,19 @@ export default {
     isFieldEditable(fieldName) {
       const isAddMode = !this.form.id; // 没有ID表示新增模式
       return isFieldEditable(fieldName, isAddMode)
+    },
+    
+    // 更新验证规则
+    updateValidationRules() {
+      if (this.version === 'all') {
+        // All Version模式下，Android版本和分类是必填的
+        this.rules.androidVersion = [{ required: true, message: '请选择Android版本', trigger: 'change' }];
+        this.rules.category = [{ required: true, message: '请选择分类', trigger: 'change' }];
+      } else {
+        // 特定版本模式下，不需要验证（会自动设置）
+        this.rules.androidVersion = [];
+        this.rules.category = [];
+      }
     },
     
     getDialogTitle() {
@@ -1014,9 +1051,19 @@ export default {
       });
     },
     handleAdd() {
+      // 重置表单数据
       this.form = {
         recordDate: this.formatDateTime(new Date()),
-        testResult: '待测试'
+        testResult: '待测试',
+        androidVersion: '',
+        category: '',
+        packageUrl: '',
+        fixContent: '',
+        developer: '',
+        commitId: '',
+        tester: '',
+        imageId: '',
+        remarks: ''
       };
       
       // 如果不是All Version视图，设置默认的版本和分类
@@ -1025,14 +1072,40 @@ export default {
         this.form.category = this.category;
       }
       
+      // 更新验证规则
+      this.updateValidationRules();
+      
       // 重新初始化编辑器配置以获取最新token
       this.initEditorConfig();
-      this.dialogFormVisible = true;
+      
+      // 确保分类数据是最新的（重新加载分类数据）
+      this.loadCategoriesFromBackend();
+      
+      // 等待下一个tick再打开对话框，确保数据正确初始化
+      this.$nextTick(() => {
+        console.log('=== 新增对话框打开 ===');
+        console.log('当前版本模式:', this.version);
+        console.log('表单初始数据:', this.form);
+        console.log('Android版本字段可编辑:', this.isFieldEditable('androidVersion'));
+        console.log('分类字段可编辑:', this.isFieldEditable('category'));
+        console.log('数据库分类数据:', this.dbCategories);
+        console.log('所有版本分类数据:', this.allVersionCategories);
+        this.dialogFormVisible = true;
+      });
     },
     handleEdit(row) {
       this.form = JSON.parse(JSON.stringify(row));
+      
+      // 更新验证规则（编辑模式下总是需要验证Android版本和分类）
+      this.rules.androidVersion = [{ required: true, message: '请选择Android版本', trigger: 'change' }];
+      this.rules.category = [{ required: true, message: '请选择分类', trigger: 'change' }];
+      
       // 重新初始化编辑器配置以获取最新token
       this.initEditorConfig();
+      
+      // 确保分类数据是最新的（重新加载分类数据）
+      this.loadCategoriesFromBackend();
+      
       this.dialogFormVisible = true;
     },
     formatDateTime(date) {
@@ -1044,15 +1117,6 @@ export default {
       return `${year}-${month}-${day} ${hours}:${minutes}`;
     },
     save() {
-      // 动态设置验证规则
-      if (this.version === 'all' || this.form.id) {
-        this.rules.androidVersion = [{ required: true, message: '请选择Android版本', trigger: 'change' }];
-        this.rules.category = [{ required: true, message: '请选择分类', trigger: 'change' }];
-      } else {
-        this.rules.androidVersion = [];
-        this.rules.category = [];
-      }
-      
       this.$refs.formRef.validate((valid) => {
         if (valid) {
           // 防止重复提交
@@ -1248,46 +1312,31 @@ export default {
       return versionMap[version] || version;
     },
     getAvailableCategoriesForVersion(version) {
-      // 基础分类（不包含通用类）：VMOS -> 公共包 -> 其他
+      // 在All Version模式下的特殊处理
+      if (this.version === 'all') {
+        // 如果已经选择了具体的Android版本，返回该版本的分类
+        if (version && version !== 'all' && this.dbCategories[version] && this.dbCategories[version].length > 0) {
+          return this.dbCategories[version];
+        }
+        // 如果没有选择版本或选择的是'all'，返回所有版本的分类集合
+        if (this.allVersionCategories && this.allVersionCategories.length > 0) {
+          return this.allVersionCategories;
+        }
+      }
+      
+      // 非All Version模式，优先使用从数据库加载的分类数据
+      if (this.dbCategories[version] && this.dbCategories[version].length > 0) {
+        return this.dbCategories[version];
+      }
+      
+      // 如果数据库分类未加载，使用默认的基础分类
       const baseCategories = [
         { label: 'VMOS', value: 'vmos' },
         { label: '公共包', value: 'public' },
         { label: '其他', value: 'other' }
       ];
       
-      const categoryMap = {
-        'a10': [
-          ...baseCategories
-        ],
-        'a13': [
-          { label: 'VMOS', value: 'vmos' },
-          { label: '公共包', value: 'public' },
-          { label: '上海通用', value: 'shanghai_common' },
-          { label: 'QT', value: 'qt' },
-          { label: '巴德', value: 'bade' },
-          { label: '毕少', value: 'bishao' },
-          { label: '其他', value: 'other' }
-        ],
-        'a14': [
-          { label: 'VMOS', value: 'vmos' },
-          { label: '公共包', value: 'public' },
-          { label: 'QT', value: 'qt' },
-          { label: '新硕', value: 'xinshuo' },
-          { label: 'GeeLark', value: 'geelark' },
-          { label: 'ML', value: 'ml' },
-          { label: '毕少', value: 'bishao' },
-          { label: '其他', value: 'other' }
-        ],
-        'a15': [
-          { label: 'VMOS', value: 'vmos' },
-          { label: '公共包', value: 'public' },
-          { label: 'QT', value: 'qt' },
-          { label: 'ML', value: 'ml' },
-          { label: 'GeeLark', value: 'geelark' },
-          { label: '其他', value: 'other' }
-        ]
-      };
-      return categoryMap[version] || baseCategories;
+      return baseCategories;
     },
     getVersionTagType(version) {
       const typeMap = {
@@ -1299,6 +1348,16 @@ export default {
       return typeMap[version] || '';
     },
     getCategoryText(category) {
+      // 先从数据库分类中查找
+      for (const version in this.dbCategories) {
+        const categories = this.dbCategories[version];
+        const found = categories.find(cat => cat.value === category);
+        if (found) {
+          return found.label;
+        }
+      }
+      
+      // 如果数据库中没有找到，使用默认映射
       const categoryMap = {
         'shanghai_common': '上海通用',
         'public': '公共包',
@@ -1324,48 +1383,6 @@ export default {
         return dateTime.substring(0, 16); // 截取到分钟
       }
       return dateTime;
-    },
-    getAvailableCategoriesForVersion(version) {
-      // 基础分类（不包含通用类）：VMOS -> 公共包 -> 其他
-      const baseCategories = [
-        { label: 'VMOS', value: 'vmos' },
-        { label: '公共包', value: 'public' },
-        { label: '其他', value: 'other' }
-      ];
-      
-      const categoryMap = {
-        'a10': [
-          ...baseCategories
-        ],
-        'a13': [
-          { label: 'VMOS', value: 'vmos' },
-          { label: '公共包', value: 'public' },
-          { label: '上海通用', value: 'shanghai_common' },
-          { label: 'QT', value: 'qt' },
-          { label: '巴德', value: 'bade' },
-          { label: '毕少', value: 'bishao' },
-          { label: '其他', value: 'other' }
-        ],
-        'a14': [
-          { label: 'VMOS', value: 'vmos' },
-          { label: '公共包', value: 'public' },
-          { label: 'QT', value: 'qt' },
-          { label: '新硕', value: 'xinshuo' },
-          { label: 'GeeLark', value: 'geelark' },
-          { label: 'ML', value: 'ml' },
-          { label: '毕少', value: 'bishao' },
-          { label: '其他', value: 'other' }
-        ],
-        'a15': [
-          { label: 'VMOS', value: 'vmos' },
-          { label: '公共包', value: 'public' },
-          { label: 'QT', value: 'qt' },
-          { label: 'ML', value: 'ml' },
-          { label: 'GeeLark', value: 'geelark' },
-          { label: '其他', value: 'other' }
-        ]
-      };
-      return categoryMap[version] || baseCategories;
     },
     // 富文本编辑器相关方法
     handleRemarksEditorCreated(editor) {
