@@ -19,12 +19,11 @@
                   class="location-btn"
                   :disabled="isSpinning">
                   <i class="el-icon-location"></i>
-                  {{ isGettingLocation ? '定位中...' : '获取当前位置推荐' }}
+                  {{ isGettingLocation ? '定位中...' : '获取当前位置' }}
                 </el-button>
                 
                 <div v-if="currentLocation" class="location-info">
-                  <span>📍 {{ currentLocation.address }}</span>
-                  <span class="location-coords">({{ currentLocation.lat }}, {{ currentLocation.lng }})</span>
+                  <span>📍 当前位置：纬度 {{ currentLocation.lat.toFixed(6) }}，经度 {{ currentLocation.lng.toFixed(6) }}</span>
                 </div>
               </div>
               
@@ -43,15 +42,6 @@
               
               <div class="result-display" v-if="result">
                 <h3>🎉 转盘结果：{{ result }}</h3>
-                <div v-if="currentLocation && currentLocation.restaurants" class="restaurant-recommendations">
-                  <p>📍 {{ currentLocation.address }} 附近推荐：</p>
-                  <div class="restaurant-list">
-                    <div v-for="restaurant in currentLocation.restaurants" :key="restaurant.name" class="restaurant-item">
-                      <span class="restaurant-name">{{ restaurant.name }}</span>
-                      <span class="restaurant-type">{{ restaurant.type }}</span>
-                    </div>
-                  </div>
-                </div>
               </div>
               <el-button type="primary" size="large" @click="spin" :disabled="isSpinning" class="spin-button">
                 {{ isSpinning ? '转盘中...' : '开始转盘' }}
@@ -270,10 +260,10 @@ export default {
           { min: 2, max: 20, message: '姓名长度在 2 到 20 个字符', trigger: 'blur' }
         ]
       },
-             currentGroupKey: '',
-       currentGroupType: '',
-       currentMemberIndex: -1,
-       options: {
+      currentGroupKey: '',
+      currentGroupType: '',
+      currentMemberIndex: -1,
+      options: {
         food: [
           '长沙味道', '湘外婆', '麦当劳', '烧腊饭', '猪脚饭', '南昌拌粉', 
           '兰州拉面', '卤咖', '盖码饭', '下馆子', '不吃了'
@@ -443,8 +433,6 @@ export default {
       this.result = ''
     },
     
-
-    
     handleTabClick() {
       // 切换标签页时完全重置转盘状态
       this.result = ''
@@ -464,6 +452,7 @@ export default {
         this.rotation = 0
       })
     },
+    
     // 验证指针实际指向哪个扇形
     verifyPointerPosition() {
       // 转盘最终旋转角度
@@ -581,8 +570,6 @@ export default {
       }, 3000)
     },
     
-
-    
     addToHistory() {
       const typeMap = {
         food: '今晚吃什么',
@@ -614,6 +601,7 @@ export default {
         this.history.pop()
       }
     },
+    
     getBugGroupName(groupKey) {
       const groupNames = {
         architecture: '架构组',
@@ -622,6 +610,7 @@ export default {
       }
       return groupNames[groupKey] || groupKey
     },
+    
     getTestGroupName(groupKey) {
       const groupNames = {
         test1: '测试1组',
@@ -629,10 +618,12 @@ export default {
       }
       return groupNames[groupKey] || groupKey
     },
+    
     // 获取选中的Bug组名称
     getSelectedBugGroupNames() {
       return this.selectedBugGroups.map(key => this.getBugGroupName(key)).join('、')
     },
+    
     // 获取选中的测试组名称
     getSelectedTestGroupNames() {
       return this.selectedTestGroups.map(key => this.getTestGroupName(key)).join('、')
@@ -714,7 +705,8 @@ export default {
         this.$refs.memberForm.resetFields()
       }
     },
-    // 获取当前位置
+    
+    // 获取当前位置 - 简化版本，只获取真实坐标
     getCurrentLocation() {
       this.isGettingLocation = true
       
@@ -722,12 +714,19 @@ export default {
         navigator.geolocation.getCurrentPosition(
           (position) => {
             const { latitude, longitude, accuracy } = position.coords
-            console.log('🌍 获取到位置信息：', {
+            console.log('🌍 获取到真实位置信息：', {
               纬度: latitude,
               经度: longitude,
               精度: accuracy + '米'
             })
-            this.processLocation(latitude, longitude)
+            
+            this.currentLocation = {
+              lat: latitude,
+              lng: longitude
+            }
+            
+            this.isGettingLocation = false
+            this.$message.success('位置获取成功！')
           },
           (error) => {
             console.error('获取位置失败:', error)
@@ -744,347 +743,19 @@ export default {
                 break
             }
             this.$message.error(errorMsg)
-            this.locationFallback()
+            this.isGettingLocation = false
           },
           {
             enableHighAccuracy: true,    // 启用高精度定位
-            timeout: 20000,             // 增加超时时间
-            maximumAge: 60000           // 减少缓存时间，获取更新的位置
+            timeout: 20000,             // 超时时间
+            maximumAge: 60000           // 缓存时间
           }
         )
       } else {
         this.$message.error('您的浏览器不支持地理位置功能')
-        this.locationFallback()
-      }
-    },
-    // 处理位置信息
-    async processLocation(lat, lng) {
-      try {
-        // 使用真实API获取地址和餐厅推荐
-        this.$message.info('正在获取附近餐厅推荐...')
-        
-        const addressData = await this.getAddressByCoordinates(lat, lng)
-        const restaurants = await this.getNearbyRestaurants(lat, lng)
-        
-        this.currentLocation = {
-          lat,
-          lng,
-          address: addressData.address,
-          city: addressData.city,
-          restaurants: restaurants
-        }
         this.isGettingLocation = false
-        this.$message.success(`获取成功！找到${restaurants.length}家附近餐厅`)
-      } catch (error) {
-        console.error('获取位置信息失败:', error)
-        this.$message.error('无法获取附近餐厅信息')
-        this.locationFallback()
       }
-    },
-    // 位置获取失败处理
-    locationFallback() {
-      this.isGettingLocation = false
-      this.$message.error('位置获取失败，请检查浏览器位置权限设置')
-    },
-    // 根据位置推荐餐厅
-    getRestaurantsByLocation(lat, lng) {
-      // 根据地理位置智能推荐餐厅
-      const locationBasedRestaurants = this.getLocationBasedRecommendations(lat, lng)
-      
-      // 从转盘选项中筛选出当地特色
-      const wheelOptions = this.currentOptions || this.options.food
-      const localSpecialties = wheelOptions.filter(food => 
-        locationBasedRestaurants.includes(food)
-      )
-      
-      // 如果有匹配的本地特色，优先推荐
-      if (localSpecialties.length > 0) {
-        return localSpecialties.slice(0, 5)
-      }
-      
-      // 否则返回地理位置相关推荐
-      return locationBasedRestaurants.slice(0, 5)
-    },
-    
-    // 获取逆地理编码地址（使用JSONP方式）
-    async getAddressByCoordinates(lat, lng) {
-      return new Promise((resolve) => {
-        const aMapKey = 'YOUR_AMAP_KEY' // 替换为您的高德地图API Key
-        
-        if (aMapKey === 'YOUR_AMAP_KEY') {
-          // 如果没有配置API Key，使用兜底方案
-          resolve(this.getAddressFallback(lat, lng))
-          return
-        }
-        
-        // 使用JSONP方式调用高德地图逆地理编码API
-        const script = document.createElement('script')
-        const callbackName = 'regeoCallback' + Date.now()
-        
-        window[callbackName] = (data) => {
-          document.head.removeChild(script)
-          delete window[callbackName]
-          
-          if (data.status === '1' && data.regeocode) {
-            const address = data.regeocode.formatted_address
-            const city = data.regeocode.addressComponent.city || data.regeocode.addressComponent.province
-            resolve({ address, city })
-          } else {
-            resolve(this.getAddressFallback(lat, lng))
-          }
-        }
-        
-        script.src = `https://restapi.amap.com/v3/geocode/regeo?key=${aMapKey}&location=${lng},${lat}&radius=1000&extensions=all&callback=${callbackName}`
-        script.onerror = () => {
-          document.head.removeChild(script)
-          delete window[callbackName]
-          resolve(this.getAddressFallback(lat, lng))
-        }
-        
-        document.head.appendChild(script)
-        
-        // 设置超时
-        setTimeout(() => {
-          if (window[callbackName]) {
-            document.head.removeChild(script)
-            delete window[callbackName]
-            resolve(this.getAddressFallback(lat, lng))
-          }
-        }, 5000)
-      })
-    },
-    
-    // 地址解析兜底方案
-    getAddressFallback(lat, lng) {
-      const cityMaps = {
-        39: '北京市', 31: '上海市', 23: '广州市', 22: '深圳市',
-        30: '杭州市', 28: '成都市', 34: '西安市', 32: '南京市'
-      }
-      
-      const latKey = Math.floor(lat)
-      const city = cityMaps[latKey] || '未知城市'
-      return { 
-        address: `${city} (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
-        city: city
-      }
-    },
-    
-    // 获取附近餐厅（多API融合）
-    async getNearbyRestaurants(lat, lng) {
-      try {
-        // 尝试多个API源
-        const restaurants = await Promise.race([
-          this.getRestaurantsFromAMap(lat, lng),
-          this.getRestaurantsFromDianping(lat, lng),
-          this.getRestaurantsFromEleme(lat, lng)
-        ])
-        
-        return restaurants.slice(0, 10) // 最多返回10个
-      } catch (error) {
-        console.error('获取餐厅推荐失败:', error)
-        return this.getRestaurantsFallback(lat, lng)
-      }
-    },
-    
-    // 高德地图POI搜索（使用JSONP方式解决跨域）
-    async getRestaurantsFromAMap(lat, lng) {
-      return new Promise((resolve, reject) => {
-        // 注意：这需要申请高德地图API Key
-        const aMapKey = 'YOUR_AMAP_KEY' // 替换为您的高德地图API Key
-        
-        if (aMapKey === 'YOUR_AMAP_KEY') {
-          // 如果没有配置API Key，基于位置生成模拟数据
-          setTimeout(() => {
-            const mockRestaurants = this.generateLocationBasedRestaurants(lat, lng)
-            resolve(mockRestaurants)
-          }, 500)
-          return
-        }
-        
-        // 使用JSONP方式调用高德地图API
-        const script = document.createElement('script')
-        const callbackName = 'amapCallback' + Date.now()
-        
-        window[callbackName] = (data) => {
-          document.head.removeChild(script)
-          delete window[callbackName]
-          
-          if (data.status === '1' && data.pois) {
-            const restaurants = data.pois.map(poi => ({
-              name: poi.name,
-              type: poi.type || '餐厅',
-              address: poi.address,
-              distance: poi.distance ? poi.distance + 'm' : '未知'
-            }))
-            resolve(restaurants)
-          } else {
-            reject(new Error('高德地图API返回错误'))
-          }
-        }
-        
-        script.src = `https://restapi.amap.com/v3/place/around?key=${aMapKey}&location=${lng},${lat}&keywords=餐厅|美食&types=050000&radius=1000&offset=8&page=1&callback=${callbackName}`
-        script.onerror = () => {
-          document.head.removeChild(script)
-          delete window[callbackName]
-          reject(new Error('高德地图API调用失败'))
-        }
-        
-        document.head.appendChild(script)
-        
-        // 设置超时
-        setTimeout(() => {
-          if (window[callbackName]) {
-            document.head.removeChild(script)
-            delete window[callbackName]
-            reject(new Error('高德地图API调用超时'))
-          }
-        }, 5000)
-      })
-    },
-    
-    // 大众点评API（需要企业认证）
-    async getRestaurantsFromDianping(lat, lng) {
-      // 注意：大众点评API需要企业认证，这里提供模拟实现
-      const mockResponse = await new Promise(resolve => {
-        setTimeout(() => {
-          const restaurants = [
-            { name: '海底捞火锅', type: '火锅' },
-            { name: '麦当劳', type: '快餐' },
-            { name: '星巴克', type: '咖啡' },
-            { name: '肯德基', type: '快餐' },
-            { name: '必胜客', type: '西餐' }
-          ]
-          
-          resolve(restaurants)
-        }, 1000)
-      })
-      return mockResponse
-    },
-    
-    // 饿了么API（需要商务合作）
-    async getRestaurantsFromEleme(lat, lng) {
-      // 注意：饿了么API需要商务合作，这里提供模拟实现
-      const mockResponse = await new Promise(resolve => {
-        setTimeout(() => {
-          const restaurants = [
-            { name: '张亮麻辣烫', type: '麻辣烫' },
-            { name: '兰州拉面', type: '面食' },
-            { name: '沙县小吃', type: '小吃' },
-            { name: '黄焖鸡米饭', type: '快餐' },
-            { name: '重庆小面', type: '面食' }
-          ]
-          
-          resolve(restaurants)
-        }, 800)
-      })
-      return mockResponse
-    },
-    
-
-    
-    // 餐厅推荐兜底方案
-    getRestaurantsFallback(lat, lng) {
-      return this.generateLocationBasedRestaurants(lat, lng)
-    },
-    
-    // 基于位置生成餐厅数据
-    generateLocationBasedRestaurants(lat, lng) {
-      // 根据经纬度判断大致区域
-      let regionRestaurants = []
-      
-      // 成都地区 (lat: 30.x, lng: 104.x)
-      if (lat >= 30.0 && lat <= 31.0 && lng >= 103.0 && lng <= 105.0) {
-        regionRestaurants = [
-          { name: '川味观', type: '川菜' },
-          { name: '蜀九香火锅', type: '火锅' },
-          { name: '陈麻婆豆腐', type: '川菜' },
-          { name: '夫妻肺片', type: '小吃' },
-          { name: '钟水饺', type: '小吃' },
-          { name: '龙抄手', type: '面食' },
-          { name: '担担面', type: '面食' },
-          { name: '麻辣串串', type: '小吃' }
-        ]
-      }
-      // 长沙地区 (lat: 28.x, lng: 112-113.x) - 用户实际位置
-      else if (lat >= 27.5 && lat <= 29.0 && lng >= 112.0 && lng <= 114.0) {
-        regionRestaurants = [
-          { name: '文和友老长沙', type: '湘菜' },
-          { name: '火宫殿', type: '湘菜' },
-          { name: '茶颜悦色', type: '奶茶' },
-          { name: '超级文和友', type: '小龙虾' },
-          { name: '湘菜馆', type: '湘菜' },
-          { name: '臭豆腐摊', type: '小吃' },
-          { name: '糖油粑粑', type: '小吃' },
-          { name: '口味虾', type: '小吃' }
-        ]
-      }
-      // 北京地区
-      else if (lat >= 39.0 && lat <= 41.0 && lng >= 115.0 && lng <= 118.0) {
-        regionRestaurants = [
-          { name: '老北京炸酱面', type: '面食' },
-          { name: '全聚德烤鸭', type: '烤鸭' },
-          { name: '东来顺涮羊肉', type: '火锅' },
-          { name: '庆丰包子', type: '包子' },
-          { name: '豆汁焦圈', type: '小吃' },
-          { name: '卤煮火烧', type: '小吃' },
-          { name: '艾窝窝', type: '点心' },
-          { name: '炒肝', type: '小吃' }
-        ]
-      }
-      // 上海地区
-      else if (lat >= 30.0 && lat <= 32.0 && lng >= 120.0 && lng <= 122.0) {
-        regionRestaurants = [
-          { name: '南翔小笼包', type: '小笼包' },
-          { name: '本帮菜馆', type: '本帮菜' },
-          { name: '生煎包', type: '包子' },
-          { name: '红烧肉', type: '本帮菜' },
-          { name: '糖醋排骨', type: '本帮菜' },
-          { name: '白切鸡', type: '本帮菜' },
-          { name: '油条豆浆', type: '早餐' },
-          { name: '咸菜肉丝面', type: '面食' }
-        ]
-      }
-      // 默认通用餐厅
-      else {
-        regionRestaurants = [
-          { name: '麦当劳', type: '快餐' },
-          { name: '肯德基', type: '快餐' },
-          { name: '星巴克', type: '咖啡' },
-          { name: '兰州拉面', type: '面食' },
-          { name: '沙县小吃', type: '小吃' },
-          { name: '黄焖鸡米饭', type: '快餐' },
-          { name: '麻辣烫', type: '小吃' },
-          { name: '重庆小面', type: '面食' }
-        ]
-      }
-      
-      return regionRestaurants.slice(0, 8) // 返回8个餐厅
-    },
-    
-    // 基于地理位置的智能推荐
-    getLocationBasedRecommendations(lat, lng) {
-      // 根据经纬度判断地区并推荐当地特色
-      if (lat >= 39 && lat <= 41 && lng >= 115 && lng <= 118) {
-        // 北京地区
-        return ['炸酱面', '烤鸭', '豆汁焦圈', '卤煮火烧', '东北菜']
-      } else if (lat >= 30 && lat <= 32 && lng >= 120 && lng <= 122) {
-        // 上海/杭州地区
-        return ['小笼包', '本帮菜', '杭帮菜', '西湖醋鱼', '粤菜']
-      } else if (lat >= 22 && lat <= 24 && lng >= 113 && lng <= 115) {
-        // 广深地区
-        return ['粤菜', '潮汕牛肉火锅', '茶餐厅', '港式茶点', '日料']
-      } else if (lat >= 30 && lat <= 31 && lng >= 103 && lng <= 105) {
-        // 成都地区
-        return ['川菜', '火锅', '麻辣烫', '串串香', '冒菜']
-      } else if (lat >= 34 && lat <= 36 && lng >= 108 && lng <= 110) {
-        // 西安地区
-        return ['肉夹馍', '凉皮', '羊肉泡馍', '西北菜', '兰州拉面']
-      } else {
-        // 其他地区默认推荐
-        return ['兰州拉面', '沙县小吃', '麻辣烫', '黄焖鸡米饭', '火锅']
-      }
-    },
-
+    }
   }
 }
 </script>
@@ -1317,80 +988,7 @@ export default {
   color: #94a3b8;
 }
 
-/* 餐厅推荐样式 */
-.restaurant-recommendations {
-  margin-top: 15px;
-  padding: 15px;
-  background: #f8fafc;
-  border-radius: 10px;
-  border-left: 4px solid #06b6d4;
-  max-height: 200px;
-  overflow-y: auto;
-}
 
-.restaurant-recommendations p {
-  margin: 0 0 10px 0;
-  color: #0891b2;
-  font-weight: 500;
-}
-
-.restaurant-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.restaurant-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 15px;
-  background: white;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  transition: all 0.2s ease;
-}
-
-.restaurant-item:hover {
-  border-color: #06b6d4;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(6, 182, 212, 0.1);
-}
-
-.restaurant-name {
-  font-weight: 500;
-  color: #1e293b;
-  font-size: 15px;
-  flex: 1;
-}
-
-.restaurant-type {
-  font-size: 12px;
-  color: #64748b;
-  background: #f1f5f9;
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-weight: 500;
-}
-
-.restaurant-tag {
-  display: inline-block;
-  padding: 4px 12px;
-  background: #06b6d4;
-  color: white;
-  border-radius: 15px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.dark-mode .restaurant-recommendations {
-  background: #1e293b;
-  border-left-color: #06b6d4;
-}
-
-.dark-mode .restaurant-recommendations p {
-  color: #67e8f9;
-}
 
 /* 暗黑模式下的组别选择器 */
 .dark-mode .group-selector :deep(.el-input__inner) {
