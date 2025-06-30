@@ -185,4 +185,10 @@
         where id = #{id}
     </update>
 
+    <update id="updateCategoryToOther">
+        UPDATE customer_package_record 
+        SET category = 'other'
+        WHERE android_version = #{androidVersion} AND category = #{fromCategory}
+    </update>
+
 </mapper> 

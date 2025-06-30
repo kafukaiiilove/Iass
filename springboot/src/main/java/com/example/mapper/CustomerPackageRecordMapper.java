@@ -48,4 +48,9 @@ public interface CustomerPackageRecordMapper {
      */
     int selectCount(CustomerPackageRecord record, String startDate, String endDate);
 
+    /**
+     * 将指定版本和分类的记录移动到"其他"分类
+     */
+    int updateCategoryToOther(String androidVersion, String fromCategory);
+
 } 

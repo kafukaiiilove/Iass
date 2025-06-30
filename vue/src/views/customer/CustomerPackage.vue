@@ -11,17 +11,56 @@
       </div>
     </div>
     
-    <!-- 添加分类选项卡 -->
-    <div class="category-tabs">
-      <el-tabs v-model="activeCategory" @tab-click="handleCategoryChange">
-        <el-tab-pane 
-          v-for="category in availableCategories" 
-          :key="category.value"
-          :label="category.label" 
-          :name="category.value">
-        </el-tab-pane>
-      </el-tabs>
-    </div>
+          <!-- 添加分类选项卡 -->
+      <div class="category-tabs">
+        <div class="tabs-container">
+          <el-tabs v-model="activeCategory" @tab-click="handleCategoryChange" class="category-tabs-main">
+            <el-tab-pane 
+              v-for="category in availableCategories" 
+              :key="category.value" 
+              :label="category.label" 
+              :name="category.value">
+            </el-tab-pane>
+          </el-tabs>
+          
+          <!-- 管理员专用：分类管理按钮组 -->
+          <div v-if="currentRole === 'ADMIN' && version !== 'all'" class="category-management">
+            <!-- 添加分类按钮 -->
+            <el-button 
+              type="primary" 
+              icon="el-icon-plus" 
+              size="small" 
+              circle 
+              class="add-category-btn"
+              @click="showAddCategoryDialog"
+              title="添加新分类">
+            </el-button>
+            
+            <!-- 删除分类下拉选择 -->
+            <el-dropdown @command="handleDeleteCategory" trigger="click" class="delete-category-dropdown">
+              <el-button 
+                type="danger" 
+                icon="el-icon-minus" 
+                size="small" 
+                circle 
+                class="delete-category-btn"
+                title="删除分类">
+              </el-button>
+              <el-dropdown-menu slot="dropdown">
+                <el-dropdown-item 
+                  v-for="category in deletableCategories" 
+                  :key="category.id"
+                  :command="category">
+                  删除 "{{ category.label }}"
+                </el-dropdown-item>
+                <el-dropdown-item v-if="deletableCategories.length === 0" disabled>
+                  暂无可删除的分类
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </el-dropdown>
+          </div>
+        </div>
+      </div>
     
         <div class="search-bar">
       <el-select v-model="searchType" placeholder="选择查询类型" style="width: 120px;">
@@ -427,6 +466,65 @@
         <el-button size="small" @click="resetZoom">重置</el-button>
       </div>
     </el-dialog>
+
+    <!-- 添加分类对话框 -->
+    <el-dialog
+      title="添加新分类"
+      :visible.sync="addCategoryVisible"
+      width="350px"
+      :close-on-click-modal="false"
+      destroy-on-close
+      class="add-category-dialog">
+      <el-form :model="{ categoryName: newCategoryName }" label-width="80px" ref="categoryFormRef">
+        <el-form-item label="分类名称" prop="categoryName" :rules="[{ required: true, message: '请输入分类名称', trigger: 'blur' }]">
+          <el-input 
+            v-model="newCategoryName" 
+            placeholder="请输入分类名称（如：性能优化）"
+            autocomplete="off"
+            maxlength="20"
+            show-word-limit>
+          </el-input>
+        </el-form-item>
+        <div class="category-tips">
+          <p><strong>当前版本：</strong>{{ getVersionText(version) }}</p>
+          <p><strong>说明：</strong>添加后该分类将出现在分类选项卡中</p>
+        </div>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="addCategoryVisible = false">取 消</el-button>
+        <el-button type="primary" @click="addNewCategory">确 定</el-button>
+      </div>
+    </el-dialog>
+
+    <!-- 删除分类确认对话框 -->
+    <el-dialog
+      title="删除分类"
+      :visible.sync="deleteCategoryVisible"
+      width="400px"
+      :close-on-click-modal="false"
+      class="delete-category-dialog">
+      <div class="delete-category-content">
+        <div class="warning-icon">
+          <i class="el-icon-warning" style="color: #f56c6c; font-size: 48px;"></i>
+        </div>
+        <div class="warning-text">
+          <p><strong>确认删除分类"{{ currentCategoryInfo.label }}"？</strong></p>
+          <p class="warning-tips">
+            <span style="color: #f56c6c;">⚠️ 注意：</span>
+            删除分类后，该分类下的所有记录将被移动到"其他"分类中，此操作不可撤销！
+          </p>
+          <div class="category-info">
+            <p><strong>当前版本：</strong>{{ getVersionText(version) }}</p>
+            <p><strong>分类名称：</strong>{{ currentCategoryInfo.label }}</p>
+            <p><strong>记录数量：</strong>{{ categoryRecordCount }} 条</p>
+          </div>
+        </div>
+      </div>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="deleteCategoryVisible = false">取 消</el-button>
+        <el-button type="danger" @click="confirmDeleteCategory">确认删除</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -488,7 +586,20 @@ export default {
       // 图片预览相关
       previewVisible: false,
       previewImageUrl: '',
-      imageScale: 1
+      imageScale: 1,
+      // 添加分类相关
+      addCategoryVisible: false,
+      newCategoryName: '',
+      // 删除分类相关
+      deleteCategoryVisible: false,
+      currentCategoryInfo: {},
+      categoryRecordCount: 0,
+      // 动态添加的分类列表
+      dynamicCategories: this.loadDynamicCategoriesFromStorage(),
+      // 数据库分类列表
+      dbCategories: {},
+      // 所有版本的分类列表（用于All Version页面）
+      allVersionCategories: []
     };
   },
   computed: {
@@ -504,54 +615,15 @@ export default {
       return `客户镜像包记录 - ${versionText}`;
     },
     availableCategories() {
-      // 如果是所有版本，显示All Version选项卡
+      // 如果是所有版本，只显示All Version选项卡
       if (this.version === 'all') {
         return [
           { label: 'All Version', value: 'all' }
         ];
       }
       
-      // 根据不同的Android版本返回不同的分类选项
-      // 基础分类（不包含通用类）：VMOS -> 公共包 -> 其他
-      const baseCategories = [
-        { label: 'VMOS', value: 'vmos' },
-        { label: '公共包', value: 'public' },
-        { label: '其他', value: 'other' }
-      ];
-      
-      const categoryMap = {
-        'a10': [
-          ...baseCategories
-        ],
-        'a13': [
-          { label: 'VMOS', value: 'vmos' },
-          { label: '公共包', value: 'public' },
-          { label: '上海通用', value: 'shanghai_common' },
-          { label: 'QT', value: 'qt' },
-          { label: '巴德', value: 'bade' },
-          { label: '毕少', value: 'bishao' },
-          { label: '其他', value: 'other' }
-        ],
-        'a14': [
-          { label: 'VMOS', value: 'vmos' },
-          { label: '公共包', value: 'public' },
-          { label: 'QT', value: 'qt' },
-          { label: '新硕', value: 'xinshuo' },
-          { label: 'GeeLark', value: 'geelark' },
-          { label: 'ML', value: 'ml' },
-          { label: '毕少', value: 'bishao' },
-          { label: '其他', value: 'other' }
-        ],
-        'a15': [
-          { label: 'VMOS', value: 'vmos' },
-          { label: '公共包', value: 'public' },
-          { label: 'QT', value: 'qt' },
-          { label: 'ML', value: 'ml' },
-          { label: 'GeeLark', value: 'geelark' },
-          { label: '其他', value: 'other' }
-        ]
-      };
-      return categoryMap[this.version] || baseCategories;
+      // 从数据库获取的分类列表
+      return this.dbCategories[this.version] || [];
     },
     // 权限相关计算属性
     canDelete() {
@@ -569,6 +641,27 @@ export default {
     currentRole() {
       return getCurrentUserRole()
     },
+    // 判断是否可以删除当前分类
+    canDeleteCurrentCategory() {
+      if (this.version === 'all' || !this.activeCategory) {
+        return false;
+      }
+      
+      const currentCategories = this.dbCategories[this.version] || [];
+      const currentCategory = currentCategories.find(cat => cat.value === this.activeCategory);
+      
+      // 只能删除非默认分类
+      return currentCategory && !currentCategory.isDefault;
+    },
+    // 获取可删除的分类列表
+    deletableCategories() {
+      if (this.version === 'all') {
+        return [];
+      }
+      
+      const currentCategories = this.dbCategories[this.version] || [];
+      return currentCategories.filter(cat => !cat.isDefault);
+    },
     // 测试结果选项（测试工程师使用）
     testResultOptions() {
       return [
@@ -581,6 +674,7 @@ export default {
   },
   created() {
     this.initEditorConfig();
+    this.loadCategoriesFromBackend();
     this.load(1);
   },
   mounted() {
@@ -603,6 +697,7 @@ export default {
         this.version = newParams.version;
         this.category = newParams.category || (newParams.version === 'all' ? 'all' : 'vmos');
         this.activeCategory = this.category;
+        this.loadCategoriesFromBackend(); // 重新加载分类
         this.load(1);
       },
       deep: true
@@ -621,6 +716,105 @@ export default {
     }
   },
   methods: {
+    // localStorage相关方法
+    loadDynamicCategoriesFromStorage() {
+      try {
+        const stored = localStorage.getItem('dynamicCategories');
+        return stored ? JSON.parse(stored) : {};
+      } catch (e) {
+        console.error('加载动态分类失败:', e);
+        return {};
+      }
+    },
+    
+    saveDynamicCategoriesToStorage() {
+      try {
+        localStorage.setItem('dynamicCategories', JSON.stringify(this.dynamicCategories));
+      } catch (e) {
+        console.error('保存动态分类失败:', e);
+      }
+    },
+    
+    clearDynamicCategories() {
+      this.dynamicCategories = {};
+      localStorage.removeItem('dynamicCategories');
+      this.$message.success('动态分类已清除');
+    },
+    
+    // 从后端加载分类列表
+    loadCategoriesFromBackend() {
+      if (this.version === 'all') {
+        // 加载所有版本的所有分类（用于All Version页面的分类筛选）
+        this.loadAllVersionCategories();
+      } else if (this.version) {
+        // 加载指定版本的分类
+        this.$request.get(`/manager/customer_package/categories/${this.version}`).then(res => {
+          if (res.code === '200' && res.data) {
+            // 将后端分类转换为前端格式
+            const categories = res.data.map(cat => ({
+              label: cat.categoryName,
+              value: cat.categoryValue,
+              id: cat.id,
+              isDefault: cat.isDefault,
+              sortOrder: cat.sortOrder
+            }));
+            
+            // 保存到dbCategories
+            this.$set(this.dbCategories, this.version, categories);
+            
+            console.log(`${this.version}版本分类加载成功:`, categories);
+          }
+        }).catch(err => {
+          console.error('加载后端分类失败:', err);
+        });
+      }
+    },
+    
+    // 加载所有版本的分类（用于All Version页面）
+    loadAllVersionCategories() {
+      const versions = ['a10', 'a13', 'a14', 'a15'];
+      const promises = versions.map(version => 
+        this.$request.get(`/manager/customer_package/categories/${version}`)
+      );
+      
+      Promise.all(promises).then(responses => {
+        const allCategories = new Set();
+        
+        responses.forEach((res, index) => {
+          if (res.code === '200' && res.data) {
+            const version = versions[index];
+            const categories = res.data.map(cat => ({
+              label: cat.categoryName,
+              value: cat.categoryValue,
+              id: cat.id,
+              isDefault: cat.isDefault,
+              sortOrder: cat.sortOrder
+            }));
+            
+            // 保存到dbCategories
+            this.$set(this.dbCategories, version, categories);
+            
+            // 收集所有分类用于All Version筛选
+            categories.forEach(cat => {
+              allCategories.add(JSON.stringify({
+                label: cat.label,
+                value: cat.value
+              }));
+            });
+          }
+        });
+        
+        // 去重并转换为数组
+        this.allVersionCategories = Array.from(allCategories)
+          .map(str => JSON.parse(str))
+          .sort((a, b) => a.label.localeCompare(b.label));
+        
+        console.log('All Version分类加载成功:', this.allVersionCategories);
+      }).catch(err => {
+        console.error('加载All Version分类失败:', err);
+      });
+    },
+    
     // 权限相关方法
     isFieldEditable(fieldName) {
       const isAddMode = !this.form.id; // 没有ID表示新增模式
@@ -1039,6 +1233,9 @@ export default {
     },
     handleCategoryChange(tab) {
       this.category = tab.name;
+      this.activeCategory = tab.name;
+      // 更新路由
+      this.$router.push(`/manager/customer-package/${this.version}/${tab.name}`);
       this.load(1);
     },
     getVersionText(version) {
@@ -1049,6 +1246,48 @@ export default {
         'a15': 'Android 15'
       };
       return versionMap[version] || version;
+    },
+    getAvailableCategoriesForVersion(version) {
+      // 基础分类（不包含通用类）：VMOS -> 公共包 -> 其他
+      const baseCategories = [
+        { label: 'VMOS', value: 'vmos' },
+        { label: '公共包', value: 'public' },
+        { label: '其他', value: 'other' }
+      ];
+      
+      const categoryMap = {
+        'a10': [
+          ...baseCategories
+        ],
+        'a13': [
+          { label: 'VMOS', value: 'vmos' },
+          { label: '公共包', value: 'public' },
+          { label: '上海通用', value: 'shanghai_common' },
+          { label: 'QT', value: 'qt' },
+          { label: '巴德', value: 'bade' },
+          { label: '毕少', value: 'bishao' },
+          { label: '其他', value: 'other' }
+        ],
+        'a14': [
+          { label: 'VMOS', value: 'vmos' },
+          { label: '公共包', value: 'public' },
+          { label: 'QT', value: 'qt' },
+          { label: '新硕', value: 'xinshuo' },
+          { label: 'GeeLark', value: 'geelark' },
+          { label: 'ML', value: 'ml' },
+          { label: '毕少', value: 'bishao' },
+          { label: '其他', value: 'other' }
+        ],
+        'a15': [
+          { label: 'VMOS', value: 'vmos' },
+          { label: '公共包', value: 'public' },
+          { label: 'QT', value: 'qt' },
+          { label: 'ML', value: 'ml' },
+          { label: 'GeeLark', value: 'geelark' },
+          { label: '其他', value: 'other' }
+        ]
+      };
+      return categoryMap[version] || baseCategories;
     },
     getVersionTagType(version) {
       const typeMap = {
@@ -1214,6 +1453,140 @@ export default {
           console.log('未能从URL中提取到Commit ID:', value);
         }
       }
+    },
+    
+    // 添加分类相关方法
+    showAddCategoryDialog() {
+      this.newCategoryName = '';
+      this.addCategoryVisible = true;
+    },
+    
+    addNewCategory() {
+      this.$refs.categoryFormRef.validate((valid) => {
+        if (valid) {
+          // 检查分类名称是否已存在
+          const currentCategories = this.dbCategories[this.version] || [];
+          const existingCategory = currentCategories.find(cat => cat.label === this.newCategoryName);
+          if (existingCategory) {
+            this.$message.error('该分类名称已存在，请使用其他名称');
+            return;
+          }
+          
+          // 调用后端API保存新分类
+          this.addCategoryToVersion(this.version, this.newCategoryName);
+        }
+      });
+    },
+    
+    addCategoryToVersion(version, categoryName) {
+      const categoryData = {
+        androidVersion: version,
+        categoryName: categoryName,
+        categoryValue: categoryName.toLowerCase().replace(/\s+/g, '_'),
+        isDefault: false,
+        sortOrder: 50 // 新增分类的默认排序
+      };
+      
+      // 调用后端API保存新分类
+      this.$request.post('/manager/customer_package/categories', categoryData).then(res => {
+        if (res.code === '200') {
+          this.$message.success(`分类"${categoryName}"添加成功`);
+          this.addCategoryVisible = false;
+          
+          // 重新从后端加载分类列表
+          this.loadCategoriesFromBackend();
+          
+          // 切换到新添加的分类
+          this.activeCategory = categoryData.categoryValue;
+          this.category = categoryData.categoryValue;
+          this.load(1);
+        } else {
+          this.$message.error(res.msg || '添加分类失败');
+        }
+      }).catch(err => {
+        console.error('添加分类失败:', err);
+        this.$message.error('添加分类失败，请稍后重试');
+      });
+    },
+    
+    // 获取分类下的记录数量
+    getCategoryRecordCount() {
+      const categoryValue = this.currentCategoryInfo ? this.currentCategoryInfo.value : this.activeCategory;
+      
+      this.$request.get(`/manager/customer_package/categoryRecordCount`, {
+        params: {
+          version: this.version,
+          category: categoryValue
+        }
+      }).then(res => {
+        if (res.code === '200') {
+          this.categoryRecordCount = res.data || 0;
+        } else {
+          this.categoryRecordCount = 0;
+        }
+      }).catch(err => {
+        console.error('获取分类记录数量失败:', err);
+        this.categoryRecordCount = 0;
+      });
+    },
+    
+    // 确认删除分类
+    confirmDeleteCategory() {
+      if (!this.currentCategoryInfo.id) {
+        this.$message.error('分类信息不完整，无法删除');
+        return;
+      }
+      
+      this.$request.delete(`/manager/customer_package/categories/${this.currentCategoryInfo.id}`).then(res => {
+        if (res.code === '200') {
+          this.$message.success('分类删除成功');
+          this.deleteCategoryVisible = false;
+          
+          // 重新加载分类列表
+          this.loadCategoriesFromBackend();
+          
+          // 切换到默认分类（VMOS或第一个分类）
+          const firstCategory = this.dbCategories[this.version] && this.dbCategories[this.version][0];
+          if (firstCategory) {
+            this.activeCategory = firstCategory.value;
+            this.category = firstCategory.value;
+            this.$router.push(`/manager/customer-package/${this.version}/${firstCategory.value}`);
+          } else {
+            // 如果没有分类了，切换到vmos
+            this.activeCategory = 'vmos';
+            this.category = 'vmos';
+            this.$router.push(`/manager/customer-package/${this.version}/vmos`);
+          }
+          
+          this.load(1);
+        } else {
+          this.$message.error(res.msg || '删除分类失败');
+        }
+      }).catch(err => {
+        console.error('删除分类失败:', err);
+        this.$message.error('删除分类失败，请稍后重试');
+      });
+    },
+    
+    // 获取搜索时的分类选项
+    getSearchCategoryOptions() {
+      if (this.version === 'all') {
+        // All Version页面显示所有分类
+        return this.allVersionCategories;
+      } else {
+        // 特定版本页面显示该版本的分类
+        return this.dbCategories[this.version] || [];
+      }
+    },
+    
+    // 处理下拉菜单删除分类
+    handleDeleteCategory(categoryInfo) {
+      this.currentCategoryInfo = categoryInfo;
+      
+      // 获取当前分类的记录数量
+      this.getCategoryRecordCount();
+      
+      this.deleteCategoryVisible = true;
     }
   }
 };
@@ -1243,11 +1616,90 @@ export default {
 .category-tabs {
   margin-bottom: 20px;
 }
+
+.tabs-container {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.category-tabs-main {
+  flex: 1;
+}
+
 .category-tabs :deep(.el-tabs__header) {
   margin-bottom: 0;
 }
+
 .category-tabs :deep(.el-tabs__nav-wrap::after) {
   height: 1px;
+}
+
+/* 添加分类按钮样式 */
+.add-category-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  transition: all 0.3s ease;
+}
+
+.add-category-btn:hover {
+  background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.add-category-btn:active {
+  transform: translateY(0);
+}
+
+/* 分类管理按钮组样式 */
+.category-management {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 15px;
+}
+
+/* 删除分类按钮样式 */
+.delete-category-btn {
+  background: linear-gradient(135deg, #f56c6c 0%, #e53e3e 100%);
+  border: none;
+  box-shadow: 0 2px 8px rgba(245, 108, 108, 0.3);
+  transition: all 0.3s ease;
+}
+
+.delete-category-btn:hover {
+  background: linear-gradient(135deg, #f45656 0%, #d73a3a 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(245, 108, 108, 0.4);
+}
+
+.delete-category-btn:active {
+  transform: translateY(0);
+}
+
+/* 删除分类下拉框样式 */
+.delete-category-dropdown {
+  display: inline-block;
+}
+
+.delete-category-dropdown .el-dropdown-menu {
+  min-width: 180px;
+}
+
+.delete-category-dropdown .el-dropdown-menu__item {
+  color: #f56c6c;
+  font-size: 13px;
+}
+
+.delete-category-dropdown .el-dropdown-menu__item:hover {
+  background-color: #fef0f0;
+  color: #f56c6c;
+}
+
+.delete-category-dropdown .el-dropdown-menu__item.is-disabled {
+  color: #c0c4cc;
 }
 .search-bar {
   margin-bottom: 20px;
@@ -1646,5 +2098,140 @@ export default {
 
 :deep(.w-e-text-container .w-e-text) {
   padding: 12px !important;
+}
+
+/* 添加分类对话框样式 */
+:deep(.add-category-dialog) {
+  border-radius: 8px;
+}
+
+:deep(.add-category-dialog .el-dialog__header) {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 8px 8px 0 0;
+  padding: 20px;
+}
+
+:deep(.add-category-dialog .el-dialog__title) {
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+:deep(.add-category-dialog .el-dialog__headerbtn .el-dialog__close) {
+  color: white;
+  font-size: 16px;
+}
+
+:deep(.add-category-dialog .el-dialog__body) {
+  padding: 25px;
+  background-color: #fafbfc;
+}
+
+:deep(.add-category-dialog .el-dialog__footer) {
+  background-color: #f8f9fa;
+  border-top: 1px solid #e9ecef;
+  padding: 15px 25px;
+  border-radius: 0 0 8px 8px;
+}
+
+.category-tips {
+  background-color: #f0f9ff;
+  border: 1px solid #b3d8ff;
+  border-radius: 4px;
+  padding: 12px;
+  margin-top: 15px;
+}
+
+.category-tips p {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  color: #606266;
+}
+
+.category-tips p:last-child {
+  margin-bottom: 0;
+}
+
+/* 删除分类对话框样式 */
+:deep(.delete-category-dialog) {
+  border-radius: 8px;
+}
+
+:deep(.delete-category-dialog .el-dialog__header) {
+  background: linear-gradient(135deg, #f56c6c 0%, #e53e3e 100%);
+  color: white;
+  border-radius: 8px 8px 0 0;
+  padding: 20px;
+}
+
+:deep(.delete-category-dialog .el-dialog__title) {
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+:deep(.delete-category-dialog .el-dialog__headerbtn .el-dialog__close) {
+  color: white;
+  font-size: 16px;
+}
+
+:deep(.delete-category-dialog .el-dialog__body) {
+  padding: 25px;
+  background-color: #fafbfc;
+}
+
+:deep(.delete-category-dialog .el-dialog__footer) {
+  background-color: #f8f9fa;
+  border-top: 1px solid #e9ecef;
+  padding: 15px 25px;
+  border-radius: 0 0 8px 8px;
+}
+
+.delete-category-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.warning-icon {
+  flex-shrink: 0;
+}
+
+.warning-text {
+  flex: 1;
+}
+
+.warning-text p {
+  margin: 8px 0;
+  line-height: 1.5;
+}
+
+.warning-tips {
+  background: #fef0f0;
+  border: 1px solid #fde2e2;
+  border-radius: 4px;
+  padding: 10px;
+  font-size: 13px;
+  color: #666;
+  margin: 10px 0;
+}
+
+.category-info {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  padding: 12px;
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.category-info p {
+  margin: 4px 0;
+  color: #666;
+}
+
+.category-info strong {
+  color: #333;
 }
 </style> 

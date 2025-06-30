@@ -143,4 +143,19 @@ public class CustomerPackageRecordService {
             throw e;
         }
     }
+
+    /**
+     * 将指定版本和分类的记录移动到"其他"分类
+     */
+    public void moveCategoryRecordsToOther(String androidVersion, String fromCategory) {
+        logger.info("Service层：开始将记录从分类{}移动到其他分类，版本：{}", fromCategory, androidVersion);
+        try {
+            int result = customerPackageRecordMapper.updateCategoryToOther(androidVersion, fromCategory);
+            logger.info("Service层：移动记录到其他分类成功，影响行数：{}", result);
+        } catch (Exception e) {
+            logger.error("Service层：移动记录到其他分类失败，版本：{}，原分类：{}，错误信息：{}", 
+                        androidVersion, fromCategory, e.getMessage(), e);
+            throw e;
+        }
+    }
 } 
