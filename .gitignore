@@ -18,7 +18,6 @@ package-lock.json
 /springboot/.mvn/
 /springboot/mvnw
 /springboot/mvnw.cmd
-/springboot/files/
 *.jar
 *.war
 *.nar

@@ -104,6 +104,24 @@ const routes = [
           category: 'vmos' // 默认显示VMOS
         })
       },
+      { 
+        path: 'customer-package/:version/:category', 
+        name: 'CustomerPackageNew', 
+        meta: { name: '客户镜像包' }, 
+        component: () => import('../views/customer/CustomerPackage.vue'),
+        props: true
+      },
+      { 
+        path: 'customer-package/:version', 
+        name: 'CustomerPackageVersionNew', 
+        meta: { name: '客户镜像包' }, 
+        component: () => import('../views/customer/CustomerPackage.vue'),
+        props: route => ({ 
+          version: route.params.version, 
+          category: 'vmos' // 默认显示VMOS
+        })
+      },
+      { path: 'lucky-wheel', name: 'LuckyWheel', meta: { name: '幸运大转盘' }, component: () => import('../views/LuckyWheel') },
       { path: 'a10', name: 'A10', meta: { name: 'Android 10' }, component: () => import('../views/manager/A10') },
       { path: 'a12', name: 'A12', meta: { name: 'Android 12' }, component: () => import('../views/manager/A12') },
       { path: 'a13', name: 'A13', meta: { name: 'Android 13' }, component: () => import('../views/manager/A13') },
@@ -113,6 +131,9 @@ const routes = [
   },
   { path: '/admin', redirect: '/manager/admin' },
   { path: '/notice', redirect: '/manager/notice' },
+  // 添加customer-package路由重定向到manager下
+  { path: '/customer-package/:version/:category', redirect: to => `/manager/customer-package/${to.params.version}/${to.params.category}` },
+  { path: '/customer-package/:version', redirect: to => `/manager/customer-package/${to.params.version}` },
   { path: '/login', name: 'Login', meta: { name: '登录' }, component: () => import('../views/Login.vue') },
   { path: '/register', name: 'Register', meta: { name: '注册' }, component: () => import('../views/Register.vue') },
   { path: '*', name: 'NotFound', meta: { name: '无法访问' }, component: () => import('../views/404.vue') },
