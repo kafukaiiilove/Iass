@@ -1,6 +1,7 @@
-# Manager 管理后台系统
+# Iass管理后台系统
 
-一个基于 **Vue.js 2.6 + SpringBoot 2.5.9 + MySQL** 的前后端分离管理系统，集成了丰富的功能模块和现代化的开发体验。
+一个基于 **Vue.js 2.6 + SpringBoot 2.5.9 + MySQL** 的前后端分离管理系统。
+
 
 ## 📋 项目简介
 
@@ -92,9 +93,6 @@ CREATE DATABASE Backend CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```bash
 # 导入主数据库结构
 mysql -u root -p Backend < database/backend.sql
-
-# 导入客户包记录表
-mysql -u root -p Backend < database/customer_package_record.sql
 ```
 
 ### 3. 后端配置与启动
@@ -107,8 +105,8 @@ spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/Backend?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
-    username: your_username
-    password: your_password
+    username: your_username(数据库用户名)
+    password: your_password(数据库密码)
 ```
 
 #### 配置文件上传路径
@@ -334,17 +332,6 @@ module.exports = {
 | @wangeditor/editor | 5.1.23 | 富文本编辑器 |
 | highlight.js | 11.11.1 | 代码高亮 |
 
-### Markdown 插件生态
-
-| 插件 | 版本 | 功能 |
-|------|------|------|
-| @bytemd/plugin-gfm | 1.22.0 | GitHub 风格 Markdown |
-| @bytemd/plugin-highlight | 1.22.0 | 代码高亮 |
-| @bytemd/plugin-math | 1.22.0 | 数学公式 (KaTeX) |
-| @bytemd/plugin-mermaid | 1.22.0 | 流程图、时序图 |
-| github-markdown-css | 5.8.1 | GitHub 样式 |
-| juejin-markdown-themes | 1.34.0 | 掘金主题 |
-
 ## 🔧 开发指南
 
 ### 本地开发环境搭建
@@ -473,7 +460,7 @@ npm install
 
 ## 📞 联系方式
 
-如有问题或建议，请通过以下方式联系：
+如有问题或建议，请通过以下方式联系：coolkafuka@163.com or 17371457171
 - 提交 GitHub Issue
 - 发送邮件至项目维护者
 
@@ -481,6 +468,6 @@ npm install
 
 **开发环境**: Windows 11 + Node.js v16.20.2 + Java 17.0.13 + Maven 3.9.9 + MySQL 8.0.40
 
-**最后更新时间**: 2024年12月19日
+**最后更新时间**: 2025年6月30日
 
 **项目版本**: v1.0.0 
