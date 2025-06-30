@@ -1,6 +1,8 @@
 # Manager 管理后台系统
 
 一个基于 **Vue.js 2.6 + SpringBoot 2.5.9 + MySQL** 的前后端分离管理系统，集成了丰富的功能模块和现代化的开发体验。
+![Uploading 6f6e2aea4087297a3546781f47ef4a52.png…]()
+
 
 ## 📋 项目简介
 
