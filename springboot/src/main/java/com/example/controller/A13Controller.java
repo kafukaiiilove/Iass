@@ -60,7 +60,7 @@ public class A13Controller {
             }
             
             // 设置时间和用户
-            a13.setTime(LocalDateTime.now());
+            a13.setTime(LocalDateTime.now().toString());
             a13.setUser(currentUser.getUsername());
             
             // 保存到数据库
@@ -131,7 +131,7 @@ public class A13Controller {
             }
             
             // 设置更新时间
-            a13.setTime(LocalDateTime.now());
+            a13.setTime(LocalDateTime.now().toString());
             
             a13Service.update(a13);
             logger.info("更新公告成功，ID：{}", a13.getId());
@@ -241,7 +241,7 @@ public class A13Controller {
             // 解析markdown内容
             String[] sections = contentText.split("## ");
             A13 a13 = new A13();
-            a13.setTime(LocalDateTime.now());
+            a13.setTime(LocalDateTime.now().toString());
             String username = TokenUtils.getCurrentUser().getUsername();
             a13.setUser(username);
 

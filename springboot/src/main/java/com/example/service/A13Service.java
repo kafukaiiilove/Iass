@@ -25,7 +25,7 @@ public class A13Service {
      */
     public void add(A13 a13) {
         // 设置时间和用户
-        a13.setTime(LocalDateTime.now());
+        a13.setTime(LocalDateTime.now().toString());
         Account currentUser = TokenUtils.getCurrentUser();
         a13.setUser(currentUser.getUsername());
         

@@ -108,7 +108,9 @@ export default {
   created() {
 
   },
-  methods: {
+  mounted() {
+  },
+    methods: {
     login() {
       this.$refs['formRef'].validate((valid) => {
         if (valid) {
@@ -154,7 +156,7 @@ export default {
 .container {
   height: 100vh;
   overflow: hidden;
-  background-image: url("@/assets/imgs/Sea.png");
+  background-image: url("@/assets/imgs/Sea-optimized.webp");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;

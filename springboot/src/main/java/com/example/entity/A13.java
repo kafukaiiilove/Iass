@@ -20,7 +20,7 @@ public class A13 implements Serializable {
     /** 参数描述 */
     private String description;
     /** 创建时间 */
-    private LocalDateTime time;
+    private String time;
     /** 创建人 */
     private String user;
     
@@ -66,11 +66,11 @@ public class A13 implements Serializable {
         this.description = description;
     }
 
-    public LocalDateTime getTime() {
+    public String getTime() {
         return time;
     }
 
-    public void setTime(LocalDateTime time) {
+    public void setTime(String time) {
         this.time = time;
     }
 
