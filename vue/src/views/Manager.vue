@@ -139,15 +139,17 @@
             </el-menu-item>
           </el-submenu>
 
-          <el-submenu index="system" v-if="hasSystemPermission">
+          <el-submenu index="system">
             <template slot="title">
               <i class="el-icon-setting"></i>
               <span>系统管理</span>
             </template>
-            <el-menu-item index="/manager/admin">
+            <!-- 管理员信息：仅管理员可见 -->
+            <el-menu-item index="/manager/admin" v-if="isAdminUser">
               <i class="el-icon-user"></i>
               <span>管理员信息</span>
             </el-menu-item>
+            <!-- 个人信息和修改密码：所有用户可见 -->
             <el-menu-item index="/manager/adminPerson">
               <i class="el-icon-user-solid"></i>
               <span>个人信息</span>
@@ -157,16 +159,6 @@
               <span>修改密码</span>
             </el-menu-item>
           </el-submenu>
-          
-          <!-- 非管理员用户的个人信息和修改密码 -->
-          <el-menu-item index="/manager/adminPerson" v-if="!hasSystemPermission">
-            <i class="el-icon-user-solid"></i>
-            <span slot="title">个人信息</span>
-          </el-menu-item>
-          <el-menu-item index="/manager/password" v-if="!hasSystemPermission">
-            <i class="el-icon-lock"></i>
-            <span slot="title">修改密码</span>
-          </el-menu-item>
 
           
         </el-menu>
@@ -213,10 +205,14 @@ export default {
     },
     // 权限相关计算属性
     hasSystemPermission() {
-      return hasSystemPermission()
+      return hasSystemPermission();
+    },
+    // 检查是否为管理员（用于管理员信息菜单项）
+    isAdminUser() {
+      return this.user.role === 'ADMIN';
     },
     currentUserRole() {
-      return getCurrentUserRole()
+      return this.user.role || getCurrentUserRole()
     },
     roleDisplayName() {
       return getRoleDisplayName(this.currentUserRole)
@@ -285,8 +281,10 @@ export default {
     updateUser() {
       // 重新获取用户信息并强制更新视图
       const newUser = JSON.parse(localStorage.getItem('xm-user') || '{}');
-      console.log('Updating user with:', newUser);
       this.user = { ...newUser };  // 使用对象展开运算符创建新对象，确保触发响应式更新
+      
+      // 强制更新菜单组件，确保权限变化能立即生效
+      this.menuKey = Date.now();
     },
     handleCommand(command) {
       if (command === 'logout') {
